@@ -1,0 +1,40 @@
+# ambiente e cache
+.venv/
+__pycache__/
+*.pyc
+.mypy_cache/
+.ruff_cache/
+.vscode/
+
+# progetti esterni clonati (si riscaricano: vedi README.md)
+01_riferimenti/inkstitch/
+01_riferimenti/inkstitch-fonts/
+
+# anteprime, prove e stampe: contengono render e file di disegni commerciali (non vanno mai pubblicati)
+03_stampa/
+04_anteprima/
+05_foto_prove/
+99_archivio/
+
+# file da ricamo e dati del catalogo: restano solo sul disco di casa
+*.pes
+*.xs
+*.pec
+*.dst
+*.jef
+*.exp
+*.hus
+*.vp3
+*.vip
+*.sew
+*.xxx
+*.emb
+*.npy
+_catalogo/
+
+# manuali di altri programmi: solo sul disco (pesanti e coperti da copyright)
+*.pdf
+
+# chiavi API (segrete)
+.env
+*.env

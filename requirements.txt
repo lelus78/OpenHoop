@@ -1,0 +1,13 @@
+# OpenHoop - Python dependencies (torch is installed separately by installa.ps1: CUDA build if an NVIDIA GPU is present)
+pyembroidery>=1.5
+shapely>=2.0
+numpy>=2.0
+scipy>=1.13
+pillow>=11
+svgelements>=1.9
+scikit-image>=0.24
+transformers>=4.50
+huggingface_hub>=0.30
+safetensors>=0.4
+sentencepiece>=0.2
+protobuf>=5
