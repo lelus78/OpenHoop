@@ -878,8 +878,10 @@ def _leggi_destinazioni():
     return out
 
 
-def pulisci(n):
-    return re.sub(r"[<>:\"/\\|?*]", "_", n).strip(" .")[:80] or "ricami"
+def pulisci(n, lung=80):
+    """Nome valido per Windows: niente caratteri vietati e, DOPO il taglio, niente spazi o punti in fondo (Windows
+    li toglie dalle cartelle: «… Dog DNS » diventava «… Dog DNS» e il file non si trovava più)."""
+    return re.sub(r"[<>:\"/\\|?*]", "_", n).strip(" .")[:lung].rstrip(" .") or "ricami"
 
 
 def scheda_html(ids):
@@ -1594,7 +1596,7 @@ def digit_nuovo(body):
         f = {k: str(body["fonte"].get(k, ""))[:300] for k in ("fonte", "titolo", "licenza", "autore", "pagina", "svg")}
         with open(os.path.join(d, "fonte.json"), "w", encoding="utf-8") as fh:
             json.dump(f, fh, ensure_ascii=False)
-    nome = pulisci(os.path.splitext(body.get("nome") or "immagine")[0])[:60]
+    nome = pulisci(os.path.splitext(body.get("nome") or "immagine")[0], 60)
     try:
         info = _calcola_bozza(d, nome, max(20.0, min(400.0, float(body.get("alt") or 100))),
                               max(2, min(16, int(body.get("colori") or 12))))
@@ -1608,7 +1610,7 @@ def digit_rifai(body):
     """Rifà una bozza con altre opzioni (misura, colori, nome)."""
     d = _bozza_dir(body.get("id"))
     vec = _bozza_info(body["id"])
-    nome = pulisci(body.get("nome") or vec["nome"])[:60]
+    nome = pulisci(body.get("nome") or vec["nome"], 60)
     forzati = dict(vec.get("forzati") or {})
     if isinstance(body.get("fili"), dict):              # filo scelto a mano: {"#rrggbb": "N212"}, "" = torna automatico
         for h, num in body["fili"].items():
@@ -2342,9 +2344,9 @@ def imp_conferma(body):
         try:
             d = _imp_dir(v.get("id"))
             info = json.load(open(os.path.join(d, "info.json"), encoding="utf-8"))
-            tema = pulisci(v.get("tema") or info["tema"])[:60]
-            racc = pulisci(v.get("raccolta") or info.get("raccolta") or tr("Importati"))[:60]
-            nome = pulisci(v.get("nome") or info["nome"])[:50]
+            tema = pulisci(v.get("tema") or info["tema"], 60)
+            racc = pulisci(v.get("raccolta") or info.get("raccolta") or tr("Importati"), 60)
+            nome = pulisci(v.get("nome") or info["nome"], 50)
             # Windows non apre percorsi oltre 260 caratteri: raccolta e nome si accorciano (spazio per « (n)» e
             # « - stampa.png»)
             resto = 245 - len(os.path.join(OUT, tema)) - len(" - stampa.png") - 6
@@ -2364,7 +2366,7 @@ def imp_conferma(body):
                 src_all = os.path.join(IMP_DIR, "_allegati", h_all)
                 if not os.path.exists(src_all):
                     continue
-                dest_all = os.path.join(OUT, tema, racc, pulisci(n_all)[:80])
+                dest_all = os.path.join(OUT, tema, racc, pulisci(n_all, 80))
                 if os.path.exists(dest_all) and os.path.getsize(dest_all) == os.path.getsize(src_all):
                     continue                                 # c'è già (altro disegno della stessa raccolta)
                 b_all, e_all = os.path.splitext(dest_all)
