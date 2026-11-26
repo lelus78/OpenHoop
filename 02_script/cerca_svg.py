@@ -147,7 +147,7 @@ def _modello():
         if "m" not in _TRAD:
             from transformers import MarianMTModel, MarianTokenizer
             _TRAD["t"] = MarianTokenizer.from_pretrained(MODELLO_TRAD)
-            _TRAD["m"] = MarianMTModel.from_pretrained(MODELLO_TRAD).eval()
+            _TRAD["m"] = MarianMTModel.from_pretrained(MODELLO_TRAD).float().eval()   # tutto float32 (vedi emb_testo)
         return _TRAD["t"], _TRAD["m"]
 
 

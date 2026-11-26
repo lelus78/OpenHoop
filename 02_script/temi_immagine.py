@@ -45,33 +45,29 @@ DESCR = {
 SOGLIA, MARGINE = 0.42, 0.12          # probabilità minima del primo tema e distacco dal secondo
 
 
-def main():
-    out = sys.argv[1]
+def proposte(out, DATI, nome=None):
+    """[(indice, tema)] per i disegni di VARIE abbastanza sicuri (non sposta niente). nome: tema -> nome cartella."""
     cat = os.path.join(out, "_catalogo")
-    t = open(os.path.join(cat, "dati.js"), encoding="utf-8").read()
-    testa, dati = t.split("const DATI=", 1)
-    DATI = json.loads(dati.rstrip().rstrip(";"))
     n = int(open(os.path.join(cat, "clip_n.txt")).read())
     E = np.load(os.path.join(cat, "clip.npy"))[:n].astype(np.float32)
     E /= np.linalg.norm(E, axis=1, keepdims=True) + 1e-8
-
-    try:                                              # nomi dei temi nella lingua dell'utente (come riordina)
-        import config
-        lingua = config.leggi().get("lingua", "it")
-        diz = json.load(open(os.path.join(QUI, "lingue", lingua + ".json"), encoding="utf-8")) if lingua != "it" else {}
-    except Exception:
-        diz = {}
-    nome = lambda s: re.sub(r'[<>:"/\\|?*]', "_", diz.get(s, s))  # noqa: E731
+    if nome is None:
+        try:                                          # nomi dei temi nella lingua dell'utente (come riordina)
+            import config
+            lingua = config.leggi().get("lingua", "it")
+            diz = json.load(open(os.path.join(QUI, "lingue", lingua + ".json"), encoding="utf-8")) if lingua != "it" else {}
+        except Exception:
+            diz = {}
+        nome = lambda s: re.sub(r'[<>:"/\\|?*]', "_", diz.get(s, s))  # noqa: E731
     varie = nome("VARIE (da smistare)")
     da_fare = [i for i in range(min(n, len(DATI))) if DATI[i][1] == varie]
     if not da_fare:
-        print("FINE: niente da smistare")
-        return
-
+        return []
     import torch
     from transformers import AutoModel, AutoProcessor
     dev = "cuda" if torch.cuda.is_available() else "cpu"
-    m = AutoModel.from_pretrained(MODELLO, torch_dtype=torch.float16 if dev == "cuda" else torch.float32).to(dev).eval()
+    m = AutoModel.from_pretrained(MODELLO, torch_dtype=torch.float16 if dev == "cuda" else torch.float32)
+    m = m.to(dev, dtype=torch.float16 if dev == "cuda" else torch.float32).eval()
     p = AutoProcessor.from_pretrained(MODELLO)
     temi = list(DESCR)
     T = []
@@ -94,38 +90,30 @@ def main():
     gruppi = defaultdict(list)                        # stessa cartella = stessa raccolta
     for i in da_fare:
         gruppi[os.path.dirname(DATI[i][0])].append(i)
-    spostati = 0
+    out_ = []
     for cart, idx in gruppi.items():
         media = E[idx].mean(0)
         pc = prob(media / (np.linalg.norm(media) + 1e-8))
         for i in idx:
             pr = 0.5 * prob(E[i]) + 0.5 * pc
             o = np.argsort(-pr)
-            if pr[o[0]] < SOGLIA or pr[o[0]] - pr[o[1]] < MARGINE:
-                continue
-            tema = nome(temi[o[0]])
-            vecchio = DATI[i][0]
-            parti = vecchio.replace("/", "\\").split("\\")
-            nuovo = os.path.join(tema, *parti[1:])
-            base, ext = os.path.splitext(nuovo)
-            k = 2
-            while os.path.exists(os.path.join(out, nuovo)):
-                nuovo = f"{base} ({k}){ext}"
-                k += 1
-            try:
-                os.makedirs(os.path.dirname(os.path.join(out, nuovo)), exist_ok=True)
-                os.replace(os.path.join(out, vecchio), os.path.join(out, nuovo))
-            except OSError:
-                continue
-            DATI[i][0], DATI[i][1] = nuovo, tema
-            spostati += 1
-            try:                                      # cartelle rimaste vuote
-                os.removedirs(os.path.dirname(os.path.join(out, vecchio)))
-            except OSError:
-                pass
-    with open(os.path.join(cat, "dati.js"), "w", encoding="utf-8") as fh:
-        fh.write(testa + "const DATI=" + json.dumps(DATI, ensure_ascii=False, separators=(",", ":")) + ";\n")
-    print(f"FINE: {spostati} di {len(da_fare)} disegni di VARIE messi in un tema guardando l'immagine")
+            if pr[o[0]] >= SOGLIA and pr[o[0]] - pr[o[1]] >= MARGINE:
+                out_.append((i, nome(temi[o[0]])))
+    return out_
+
+
+def main():
+    """Dopo l'indicizzazione: sposta i VARIE riconosciuti e aggiorna tutti i riferimenti (sistema_libreria)."""
+    import sistema_libreria as SL
+    out = sys.argv[1]
+    L = SL.Libreria(out)
+    prop = proposte(out, L.dati)
+    for i, tema in prop:
+        vecchio = L.dati[i][0]
+        parti = vecchio.replace("/", "\\").split("\\")
+        L.sposta(i, os.path.join(tema, *parti[1:]), tema=tema)
+    L.salva()
+    print(f"FINE: {len(prop)} disegni di VARIE messi in un tema guardando l'immagine")
 
 
 if __name__ == "__main__":

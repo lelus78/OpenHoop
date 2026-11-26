@@ -69,7 +69,12 @@ static class OpenHoop
             // server senza finestra; il registro va in %APPDATA%\OpenHoop\openhoop.log (utile per le segnalazioni)
             string cart = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "OpenHoop");
             Directory.CreateDirectory(cart);
-            var log = new StreamWriter(Path.Combine(cart, "openhoop.log"), false, Encoding.UTF8) { AutoFlush = true };
+            // il registro dell'avvio precedente resta in openhoop.prev.log (prima veniva sovrascritto e dopo un
+            // riavvio non si capiva più cosa era successo)
+            string fLog = Path.Combine(cart, "openhoop.log"), fPrec = Path.Combine(cart, "openhoop.prev.log");
+            try { if (File.Exists(fLog)) { if (File.Exists(fPrec)) File.Delete(fPrec); File.Move(fLog, fPrec); } } catch { }
+            var log = new StreamWriter(fLog, false, Encoding.UTF8) { AutoFlush = true };
+            log.WriteLine("=== avvio " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + " ===");
             var si = new ProcessStartInfo(py, "-u \"" + server + "\" --no-browser")
             {
                 UseShellExecute = false, CreateNoWindow = true, WorkingDirectory = Radice,

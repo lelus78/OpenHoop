@@ -20,7 +20,7 @@ FILE = os.environ.get("OPENHOOP_CONFIG") or os.path.join(CARTELLA, "config.json"
 
 PREDEFINITE = {"lingua": "it", "sorgenti": [], "archivio": "", "marca": "Brother", "formato": ".pes",
                "telai": [[100, 100], [130, 180], [160, 260]], "taglia_salti": False, "unita": "mm",
-               "fili": "Brothread 80", "pronto": False}
+               "fili": "Brothread 80", "pronto": False, "aggiornamenti": True}
 
 
 def leggi():

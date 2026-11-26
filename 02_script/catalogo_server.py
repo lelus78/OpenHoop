@@ -47,6 +47,24 @@ def tr(s):
 _DIZ = diz()
 
 
+def _hf_offline():
+    """Modelli già scaricati -> niente richieste a internet a ogni avvio (si parte prima e funziona anche senza
+    connessione). Se ne manca uno (prima installazione, lingua nuova) si lascia scaricare."""
+    if os.environ.get("HF_HUB_OFFLINE"):
+        return
+    base = os.path.join(os.environ.get("HF_HOME") or os.path.join(os.path.expanduser("~"), ".cache", "huggingface"), "hub")
+    serve = ["google/siglip2-so400m-patch16-384"]
+    trad = {"it": "Helsinki-NLP/opus-mt-it-en", "fr": "Helsinki-NLP/opus-mt-fr-en",
+            "es": "Helsinki-NLP/opus-mt-es-en"}.get(CFG.get("lingua") or "it")
+    if trad:
+        serve.append(trad)
+    if all(os.path.isdir(os.path.join(base, "models--" + m.replace("/", "--"), "snapshots")) for m in serve):
+        os.environ["HF_HUB_OFFLINE"] = "1"
+
+
+_hf_offline()
+
+
 AVVIO = int(time.time())
 
 
@@ -110,6 +128,16 @@ if not FIGLIO:
                 PATCH_DI.setdefault(_p["origine"], []).append(_p["voce"][0])
                 PATCH_ORIG[_p["voce"][0]] = _p["origine"]
     except (OSError, ValueError, KeyError, TypeError):
+        pass
+    # versioni dei colori di un disegno («Scarta ma prendi i suoi colori», poi si sceglie nella scheda): il file
+    # ha già i colori di quella attiva, qui solo la sequenza per miniature e fili (dati.js non si riscrive)
+    try:
+        _cv = json.load(open(os.path.join(CAT, "colori_varianti.json"), encoding="utf-8"))
+        for d in DATI:
+            if d[0] in _cv and len(d) > 7:
+                _v = _cv[d[0]]
+                d[7] = [f[0] for f in _v["var"][_v["attiva"]]["fili"]][:40]
+    except (OSError, ValueError, KeyError, IndexError, TypeError):
         pass
     LOW = [d[0].lower() for d in DATI]
     NOMI = [os.path.splitext(os.path.basename(d[0]))[0] for d in DATI]
@@ -235,7 +263,10 @@ def emb_testo(q):
             from transformers import AutoModel, AutoProcessor
             dev = "cuda" if torch.cuda.is_available() else "cpu"
             m = AutoModel.from_pretrained(MODELLO, torch_dtype=torch.float16 if dev == "cuda" else torch.float32)
-            _txt_model = (m.to(dev).eval(), AutoProcessor.from_pretrained(MODELLO), dev)
+            # tutto il modello nello stesso formato: se un altro modello (traduzione) si carica nello stesso momento,
+            # transformers può lasciarne una parte in float32 («mat1 and mat2 must have the same dtype»)
+            m = m.to(dev, dtype=torch.float16 if dev == "cuda" else torch.float32)
+            _txt_model = (m.eval(), AutoProcessor.from_pretrained(MODELLO), dev)
         m, p, dev = _txt_model
         x = p(text=[q.lower()], padding="max_length", max_length=64, return_tensors="pt").to(dev)
         with torch.no_grad():
@@ -590,13 +621,17 @@ def cerca(p):
         if solo == "nuovi" and o == "n" and not mis:
             risultati.sort(key=lambda r: -r[0])                         # aggiunti di recente: l'ultimo per primo
     n_file = len(risultati)
+    # aggiunti di recente nascosti dal filtro dei telai (es. appena importato ma troppo grande): la pagina lo dice
+    fuori_tel = 0
+    if solo == "nuovi" and tel == "x" and not (q or mis or colmax or conifili or tema or autore or racc is not None):
+        fuori_tel = sum(1 for i in range(N_DATIJS, len(DATI)) if i not in TOLTI and not entra(DATI[i]))
     if p.get("raggruppa", "1") == "1" and (VAR or PATCH_ORIG):
         risultati = raggruppa(risultati)
     pag, per = int(p.get("pagina", "0")), int(p.get("per", "120"))
     return {"tot": len(risultati), "n_file": n_file, "items": [voce(i, sc) for i, sc in risultati[pag * per:(pag + 1) * per]],
             "clip": EMB is not None, "clip_n": _n_emb, "vaghi": vaghi, "conteggi": conteggi(tel, tema),
             "n_pref": sum(1 for x in SET["pref"] if x in IDX), "n_ric": sum(1 for x in SET["ric"] if x in IDX),
-            "misura": mis, "tol": round(tol * 100)}
+            "misura": mis, "tol": round(tol * 100), "fuori_tel": max(0, fuori_tel)}
 
 
 # ---------------- anteprima grande disegnata dal PES ----------------
@@ -1685,7 +1720,7 @@ def digit_salva(body):
     return {"file": dest}
 
 
-def _aggiungi_al_catalogo(voce_d):
+def _aggiungi_al_catalogo(voce_d, ricalcola=True):
     """Aggiunge una voce [percorso, tema, w, h, colori, punti, ext, sequenza] a tutte le strutture in memoria."""
     i = len(DATI)
     DATI.append(voce_d)
@@ -1696,8 +1731,9 @@ def _aggiungi_al_catalogo(voce_d):
     k = chiave_serie(voce_d[0])
     SERIE.setdefault(k, []).append(i)
     RACC_ORIG.setdefault(k[0], []).append(i)
-    prepara_colori()                                    # colori nuovi (toppe, digitalizzati): abbinati ai fili che ho
-    calcola_fili()
+    if ricalcola:                                       # (le importazioni grandi lo fanno una volta per blocco)
+        prepara_colori()                                # colori nuovi (toppe, digitalizzati): abbinati ai fili che ho
+        calcola_fili()
     _CT.clear()
     _CONTEGGI.clear()
     return i
@@ -1754,6 +1790,39 @@ def _miniature_nuove(i, rel):
         shutil.copyfile(hd, os.path.join(CAT, "img", f"{i}.webp"))
 
 
+_VELOCI = set()                                           # appena messi in libreria: miniatura veloce già pronta
+
+
+def _miniature_veloci(i, rel, d):
+    """Come _miniature_nuove ma senza aspettare: subito la miniatura dall'anteprima già fatta durante l'analisi,
+    quella «bella» la rifanno i processi in sottofondo (prima: fino a 1 s a disegno in «Metti in libreria»)."""
+    for sub in ("img", "img_hd"):
+        try:
+            os.remove(os.path.join(CAT, sub, f"{i}.webp"))
+        except OSError:
+            pass
+    xl = os.path.join(CAT, "img_xl")
+    if os.path.isdir(xl):
+        for x in os.listdir(xl):
+            if re.match(rf"{i}[_.]", x):
+                try:
+                    os.remove(os.path.join(xl, x))
+                except OSError:
+                    pass
+    try:
+        from PIL import Image
+        im = Image.open(os.path.join(d, "anteprima.webp")).convert("RGB")
+        im.thumbnail((240, 240), Image.LANCZOS)
+        quad = Image.new("RGB", (240, 240), "white")
+        quad.paste(im, ((240 - im.width) // 2, (240 - im.height) // 2))
+        os.makedirs(os.path.join(CAT, "img"), exist_ok=True)
+        quad.save(os.path.join(CAT, "img", f"{i}.webp"), "WEBP", quality=78)
+        _VELOCI.add(i)
+    except Exception:
+        pass
+    miniatura_hd(i)                                       # in coda ai processi: non si aspetta
+
+
 def digit_conferma(body):
     """La bozza entra in libreria: PES in Ricami_ordinati/DIGITALIZZATI + voce nel catalogo + miniatura."""
     d = _bozza_dir(body.get("id"))
@@ -1797,6 +1866,47 @@ _IMP_LOCK = threading.Lock()
 _IMP_CODA = []                                              # [(tipo, valore, fonte)] tipo: file | percorso | link
 _IMP_CONTA = __import__("itertools").count()
 _IMP_STATO = {"attivo": False, "fatti": 0, "nuovi": 0, "doppi": 0, "gia": 0, "errori": [], "ora": ""}
+# la coda sopravvive ai riavvii: i file caricati dalla pagina si salvano in importa_coda/, l'elenco in coda.json
+IMP_CODA_DIR = os.path.join(CAT, "importa_coda")
+F_IMP_CODA = os.path.join(IMP_CODA_DIR, "coda.json")
+_IMP_CORRENTE = [None]
+_IMP_ALL_CACHE = {}                                         # cartella del disco -> allegati trovati (importazione)
+
+
+def _imp_coda_salva():
+    """Da chiamare con _IMP_LOCK preso. Solo voci «percorso» e «link» (i byte stanno nei file)."""
+    voci = ([_IMP_CORRENTE[0]] if _IMP_CORRENTE[0] else []) + _IMP_CODA
+    try:
+        os.makedirs(IMP_CODA_DIR, exist_ok=True)
+        with open(F_IMP_CODA + ".tmp", "w", encoding="utf-8") as fh:
+            json.dump([list(v) for v in voci if v[0] in ("percorso", "link")], fh, ensure_ascii=False)
+        os.replace(F_IMP_CODA + ".tmp", F_IMP_CODA)
+    except OSError as e:
+        print("coda non salvata:", e)
+
+
+def imp_file_su_disco(nome, raw):
+    """File arrivato dalla pagina -> importa_coda/<n>_<nome> e voce «percorso» (riprende dopo un riavvio)."""
+    os.makedirs(IMP_CODA_DIR, exist_ok=True)
+    nome = os.path.basename(nome) or "file"
+    f = os.path.join(IMP_CODA_DIR, f"{int(time.time() * 1000):x}_{nome}")
+    with open(f, "wb") as fh:
+        fh.write(raw)
+    return ("percorso", (f, nome), nome)
+
+
+def imp_riprendi():
+    """All'avvio: quello che era in coda (o a metà) quando OpenHoop si è chiuso riparte da solo.
+    I disegni già analizzati si riconoscono e si saltano."""
+    try:
+        voci = [tuple(v) for v in json.load(open(F_IMP_CODA, encoding="utf-8"))]
+    except (OSError, ValueError):
+        return
+    voci = [(a, tuple(b) if isinstance(b, list) else b, c) for a, b, c in voci
+            if a == "link" or (a == "percorso" and os.path.exists(b[0]))]
+    if voci:
+        print(f"importazione ripresa: {len(voci)} file in coda")
+        imp_accoda(voci)
 _PER_MISURA = {}                                            # (larg, alt arrotondate) -> [indici]: per i doppioni
 _FIRME = {}
 TEMA_VARIE = tr("VARIE (da smistare)")
@@ -1862,18 +1972,20 @@ def _tema_proposto(info, v):
     return t
 
 
-def _imp_uno(d, fonte, sorgenti):
+def _imp_uno(d, fonte, sorgenti, in_attesa=None):
     import importa as IM
     from anteprima_bella import render
     pat, info = IM.prepara(d)
     if info["sha1"] in sorgenti:
         _IMP_STATO["gia"] += 1
         return
-    for b in imp_elenco():                                   # già in attesa (stesso file trascinato due volte)
-        if b.get("sha1") == info["sha1"]:
-            _IMP_STATO["gia"] += 1
-            return
-    iid = f"{int(time.time() * 1000):x}{next(_IMP_CONTA) % 65536:04x}"
+    if in_attesa is None:
+        in_attesa = _Attesa()
+    if info["sha1"] in in_attesa:                            # già in attesa (stesso file trascinato due volte)
+        _IMP_STATO["gia"] += 1
+        return
+    in_attesa.add(info["sha1"])
+    iid =f"{int(time.time() * 1000):x}{next(_IMP_CONTA) % 65536:04x}"
     cart = os.path.join(IMP_DIR, iid)
     os.makedirs(cart, exist_ok=True)
     with open(os.path.join(cart, "disegno.pes"), "wb") as fh:
@@ -1891,52 +2003,128 @@ def _imp_uno(d, fonte, sorgenti):
     except Exception as e:
         print("impronta non calcolata:", e)
     dop = _doppione(info)
+    # allegati: una copia sola per contenuto in importa/_allegati (lo stesso PDF vale per tutta la raccolta)
+    elenco_all = []
+    for n, raw in d.get("allegati", []):
+        h = __import__("hashlib").sha1(raw).hexdigest()[:20] + os.path.splitext(n)[1].lower()
+        fa = os.path.join(IMP_DIR, "_allegati", h)
+        if not os.path.exists(fa):
+            os.makedirs(os.path.dirname(fa), exist_ok=True)
+            with open(fa, "wb") as fh:
+                fh.write(raw)
+        elenco_all.append([n, h])
+    info["allegati"] = elenco_all
     info.update(id=iid, fonte=fonte, data=time.strftime("%Y-%m-%d %H:%M:%S"), tema=_tema_proposto(info, v),
                 doppione=None if dop is None else {"i": dop, "percorso": DATI[dop][0]})
+    if dop is None and isinstance(in_attesa, _Attesa):
+        # stesso disegno già in attesa (altro formato o altro nome): resta «nuovo» quello nel formato della
+        # macchina dell'utente, l'altro diventa «uguale a un altro in attesa»
+        altro = in_attesa.cerca(info)
+        if altro is not None:
+            if IM.prio(info.get("formato")) < IM.prio(altro.get("formato")):
+                for b in _imp_carica():                       # chi puntava al vecchio ora punta al nuovo
+                    if b.get("doppio_di") == altro["id"] or b is altro:
+                        b["doppio_di"] = iid
+                        try:
+                            _imp_scrivi_info(b)
+                        except OSError:
+                            pass
+                in_attesa.togli(altro)
+            else:
+                info["doppio_di"] = altro["id"]
+    if not info.get("doppio_di") and dop is None and isinstance(in_attesa, _Attesa):
+        in_attesa.metti(info)
     with open(os.path.join(cart, "info.json"), "w", encoding="utf-8") as fh:
         json.dump(info, fh, ensure_ascii=False)
-    _IMP_STATO["doppi" if dop is not None else "nuovi"] += 1
+    _IMP_STATO["doppi" if dop is not None or info.get("doppio_di") else "nuovi"] += 1
 
 
 def _imp_lavoratore():
     """Un'importazione alla volta, in sottofondo: la pagina chiede lo stato ogni secondo."""
     import importa as IM
+    IM.PREFERITO = FORMATO                                  # formato della macchina: vince sugli altri
     while True:
         with _IMP_LOCK:
             if not _IMP_CODA:
                 _IMP_STATO["attivo"] = False
                 return
             tipo, val, fonte = _IMP_CODA.pop(0)
+            _IMP_CORRENTE[0] = (tipo, val, fonte)
+            _imp_coda_salva()
         try:
+            allegati = []                                    # PDF, istruzioni, tabelle dei colori
             if tipo == "file":
                 nome, raw = val
-                files = IM.espandi(nome, raw)
+                files = IM.espandi(nome, raw, allegati)
             elif tipo == "percorso":                         # (file, percorso relativo alla cartella scelta)
-                files = IM.espandi(val[1], open(val[0], "rb").read())
+                files = IM.espandi(val[1], open(val[0], "rb").read(), allegati)
+                if not val[0].lower().endswith(".zip") and                         os.path.dirname(os.path.abspath(val[0])) != os.path.abspath(IMP_CODA_DIR):
+                    # disegno preso da una cartella: allegati della sua cartella (o di quella sopra), con lo stesso
+                    # percorso relativo del disegno così assegna_allegati li abbina
+                    pref = "/".join(x for x in val[1].replace("\\", "/").split("/")[:-1] if x)
+                    allegati = [((pref + "/" if pref else "") + n.split("/")[-1], r)
+                                for n, r in IM.allegati_vicini(val[0], _IMP_ALL_CACHE)]
             else:
                 _IMP_STATO["ora"] = "scarico " + val[:80]
                 nome, raw = IM.scarica_link(val)
-                files = IM.espandi(nome, raw)
+                files = IM.espandi(nome, raw, allegati)
             sorgenti = _imp_sorgenti()
-            for d in IM.raggruppa(files):
+            gruppi = IM.raggruppa(files)
+            IM.assegna_allegati(gruppi, allegati)
+            in_attesa = _Attesa()
+            _IMP_STATO["dis_tot"] = _IMP_STATO.get("dis_tot", 0) + len(gruppi)
+            for d in gruppi:
                 _IMP_STATO["ora"] = d["nome"]
+                _IMP_STATO["dis_fatti"] = _IMP_STATO.get("dis_fatti", 0) + 1
                 try:
-                    _imp_uno(d, fonte, sorgenti)
+                    _imp_uno(d, fonte, sorgenti, in_attesa)
                 except Exception as e:
                     _IMP_STATO["errori"].append(f"{d['nome']}: {e}"[:200])
         except Exception as e:
             _IMP_STATO["errori"].append(f"{fonte}: {e}"[:300])
         _IMP_STATO["fatti"] += 1
         _IMP_STATO["ora"] = ""
+        with _IMP_LOCK:
+            _IMP_CORRENTE[0] = None
+            _imp_coda_salva()
+        if tipo == "percorso" and os.path.dirname(os.path.abspath(val[0])) == os.path.abspath(IMP_CODA_DIR):
+            try:
+                os.remove(val[0])                            # file caricato dalla pagina: ormai è in attesa
+            except OSError:
+                pass
+
+
+ALLEGATI = {".pdf", ".txt", ".rtf", ".doc", ".docx", ".odt", ".htm", ".html", ".jpg", ".jpeg", ".png", ".gif", ".bmp"}
+
+
+def allegati_di(i):
+    """Istruzioni, tabelle colori, PDF nella cartella della raccolta del disegno (messi lì dall'importazione o da
+    «Sistema la libreria»). L'immagine da stampare di un altro disegno non conta."""
+    cart = os.path.dirname(os.path.join(OUT, DATI[i][0]))
+    mio = os.path.splitext(os.path.basename(DATI[i][0]))[0] + " - stampa.png"
+    try:
+        nomi = sorted(os.listdir(cart), key=lambda f: (os.path.splitext(f)[1].lower() in (".jpg", ".jpeg", ".png", ".gif", ".bmp"), f.lower()))
+    except OSError:
+        return []
+    return [f for f in nomi if os.path.splitext(f)[1].lower() in ALLEGATI
+            and (not f.endswith(" - stampa.png") or f == mio)][:30]
+
+
+def _sistema_in_corso():
+    return _LAVORO.get("tipo") == "sistema" and not _LAVORO.get("finito") and _LAVORO.get("modo") != "anteprima"
 
 
 def imp_accoda(voci):
     """voci: [(tipo, valore, fonte)]. Parte il lavoratore se è fermo."""
+    if _sistema_in_corso():
+        raise ValueError("sto sistemando la libreria: importa quando ho finito")
     with _IMP_LOCK:
         if not _IMP_STATO["attivo"]:
-            _IMP_STATO.update(fatti=0, nuovi=0, doppi=0, gia=0, errori=[], ora="", totale=0)
+            _IMP_STATO.update(fatti=0, nuovi=0, doppi=0, gia=0, errori=[], ora="", totale=0, dis_tot=0, dis_fatti=0)
+            _IMP_ALL_CACHE.clear()
         _IMP_CODA.extend(voci)
         _IMP_STATO["totale"] = _IMP_STATO.get("totale", 0) + len(voci)
+        _imp_coda_salva()
         if not _IMP_STATO["attivo"]:
             _IMP_STATO["attivo"] = True
             threading.Thread(target=_imp_lavoratore, daemon=True).start()
@@ -1944,21 +2132,127 @@ def imp_accoda(voci):
 
 
 def imp_stato():
-    return dict(_IMP_STATO, in_coda=len(_IMP_CODA))
+    return dict(_IMP_STATO, in_coda=len(_IMP_CODA), conferma=dict(_CONF))
+
+
+def imp_barra():
+    """Per la barra in alto (tutte le pagine): analisi dei disegni importati e «Metti in libreria»."""
+    a, c = _IMP_STATO, _CONF
+    return {"analisi": {"attivo": a["attivo"], "fatti": a.get("dis_fatti", 0), "totale": a.get("dis_tot", 0)},
+            "libreria": {"attivo": c["attivo"], "fatti": c["fatti"], "totale": c["totale"], "messi": c["messi"]},
+            "attesa": sum(1 for x in os.listdir(IMP_DIR) if not x.startswith("_")) if os.path.isdir(IMP_DIR) else 0}
+
+
+_IMP_CACHE = {}                                            # id -> (data di info.json, dati): niente 3.000 letture a ogni giro
+
+
+def _imp_carica():
+    """Disegni in attesa così come sono in info.json (anche la firma). Gli oggetti sono quelli della cache."""
+    if not os.path.isdir(IMP_DIR):
+        return []
+    out, visti = [], set()
+    for e in os.scandir(IMP_DIR):
+        if e.name.startswith("_") or not e.is_dir():
+            continue
+        f = os.path.join(e.path, "info.json")
+        try:
+            mt = os.stat(f).st_mtime_ns
+            c = _IMP_CACHE.get(e.name)
+            if c is None or c[0] != mt:
+                c = _IMP_CACHE[e.name] = (mt, json.load(open(f, encoding="utf-8")))
+            out.append(c[1])
+            visti.add(e.name)
+        except (OSError, ValueError):
+            pass
+    for k in [k for k in _IMP_CACHE if k not in visti]:
+        del _IMP_CACHE[k]
+    return out
+
+
+def _imp_scrivi_info(b):
+    f = os.path.join(IMP_DIR, b["id"], "info.json")
+    with open(f + ".tmp", "w", encoding="utf-8") as fh:
+        json.dump(b, fh, ensure_ascii=False)
+    os.replace(f + ".tmp", f)
 
 
 def imp_elenco():
-    if not os.path.isdir(IMP_DIR):
-        return []
+    tutti = _imp_carica()
+    ids = {b.get("id") for b in tutti}
+    orfani = {}                                          # il disegno di riferimento è andato in libreria o scartato
+    for b in tutti:
+        if b.get("doppio_di") and b["doppio_di"] not in ids:
+            orfani.setdefault(b["doppio_di"], []).append(b)
+    if orfani:
+        import importa as IM
+        IM.PREFERITO = FORMATO
+        for gruppo in orfani.values():
+            gruppo.sort(key=lambda x: IM.prio(x.get("formato")))
+            capo = gruppo[0]                             # il migliore rimasto diventa il riferimento
+            capo.pop("doppio_di", None)
+            if capo.get("firma") and capo.get("doppione") is None:
+                try:
+                    j = _doppione(capo)
+                    if j is not None:
+                        capo["doppione"] = {"i": j, "percorso": DATI[j][0]}
+                except Exception:
+                    pass
+            for x in gruppo[1:]:
+                x["doppio_di"] = capo["id"]
+            for x in gruppo:
+                try:
+                    _imp_scrivi_info(x)
+                except OSError:
+                    pass
     out = []
-    for iid in os.listdir(IMP_DIR):
-        try:
-            out.append(json.load(open(os.path.join(IMP_DIR, iid, "info.json"), encoding="utf-8")))
-        except (OSError, ValueError):
-            pass
-    for b in out:
-        b.pop("firma", None)
+    for b in tutti:
+        c = {k: v for k, v in b.items() if k != "firma"}
+        dp = c.get("doppione")
+        if isinstance(dp, dict) and isinstance(dp.get("i"), int) and 0 <= dp["i"] < len(DATI):
+            d = DATI[dp["i"]]
+            c["doppione"] = dict(dp, w=d[2], h=d[3], col=d[4], punti=d[5], seq=d[7] if len(d) > 7 else [])
+        out.append(c)
     return sorted(out, key=lambda b: b.get("data", ""), reverse=True)
+
+
+class _Attesa:
+    """Disegni già in attesa, per non farne entrare due uguali nella stessa importazione: stesso file (sha1) o
+    stesso disegno in un altro formato / con un altro nome (misure ±1 mm, punti ±3%, firma come _doppione)."""
+
+    def __init__(self):
+        self.sha, self.mis = set(), {}
+        for b in _imp_carica():
+            self.sha.add(b.get("sha1"))
+            if not b.get("doppione") and not b.get("doppio_di"):
+                self.metti(b)
+
+    def __contains__(self, sha):
+        return sha in self.sha
+
+    def add(self, sha):
+        self.sha.add(sha)
+
+    def metti(self, b):
+        if b.get("firma"):
+            self.mis.setdefault((round(b["larg"]), round(b["alt"])), []).append(b)
+
+    def togli(self, b):
+        lst = self.mis.get((round(b["larg"]), round(b["alt"])), [])
+        if b in lst:
+            lst.remove(b)
+
+    def cerca(self, info):
+        kw, kh = round(info["larg"]), round(info["alt"])
+        for dw in (-1, 0, 1):
+            for dh in (-1, 0, 1):
+                for b in self.mis.get((kw + dw, kh + dh), ()):
+                    if abs(b["larg"] - info["larg"]) > 1 or abs(b["alt"] - info["alt"]) > 1:
+                        continue
+                    if abs(b["punti"] - info["punti"]) > 0.03 * max(b["punti"], info["punti"]):
+                        continue
+                    if sum(abs(x - y) for x, y in zip(b["firma"], info["firma"])) < 0.08:
+                        return b
+        return None
 
 
 def _imp_dir(iid):
@@ -1970,60 +2264,279 @@ def _imp_dir(iid):
     return d
 
 
+_CONF = {"attivo": False, "fatti": 0, "totale": 0, "errori": [], "messi": 0}       # «Metti in libreria» in sottofondo
+
+
+def imp_conferma_avvia(body):
+    """Parte in sottofondo e risponde subito: la pagina segue l'avanzamento (barra in alto)."""
+    voci = [v for v in body.get("voci", []) if isinstance(v, dict)]
+    if _sistema_in_corso():
+        raise ValueError("sto sistemando la libreria: aspetta che finisca")
+    with _IMP_LOCK:
+        if _CONF["attivo"]:
+            raise ValueError("sto già mettendo in libreria altri disegni: aspetta che finisca")
+        _CONF.update(attivo=True, fatti=0, totale=len(voci), errori=[], messi=0)
+    threading.Thread(target=_imp_conferma_lavora, args=(voci,), daemon=True).start()
+    return dict(_CONF)
+
+
+def _imp_conferma_lavora(voci):
+    try:
+        imp_conferma({"voci": voci})
+    except Exception as e:
+        _CONF["errori"].append(str(e)[:300])
+    finally:
+        _CONF["attivo"] = False
+
+
 def imp_conferma(body):
-    """Mette in libreria i disegni scelti: [{id, tema, raccolta, nome}] (i campi vuoti restano quelli proposti)."""
+    """Mette in libreria i disegni scelti: [{id, tema, raccolta, nome}] (i campi vuoti restano quelli proposti).
+    A blocchi: i calcoli su tutto il catalogo (colori, indice di ricerca, file json) si fanno una volta ogni 50
+    disegni e alla fine, non per ogni disegno (con 1.700 disegni prima ci voleva un'ora)."""
     global EMB, _n_emb
-    fatti = []
-    for v in body.get("voci", [])[:2000]:
-        d = _imp_dir(v.get("id"))
-        info = json.load(open(os.path.join(d, "info.json"), encoding="utf-8"))
-        tema = pulisci(v.get("tema") or info["tema"])[:60]
-        racc = pulisci(v.get("raccolta") or info.get("raccolta") or tr("Importati"))[:60]
-        nome = pulisci(v.get("nome") or info["nome"])[:50]
-        os.makedirs(os.path.join(OUT, tema, racc), exist_ok=True)
-        rel = os.path.join(tema, racc, nome + ".pes")
-        n = 2
-        while os.path.exists(os.path.join(OUT, rel)):
-            rel = os.path.join(tema, racc, f"{nome} ({n}).pes")
-            n += 1
-        shutil.copyfile(os.path.join(d, "disegno.pes"), os.path.join(OUT, rel))
-        if os.path.exists(os.path.join(d, "stampa.png")):    # accanto al PES: «<nome> - stampa.png»
-            shutil.copyfile(os.path.join(d, "stampa.png"), os.path.join(OUT, rel[:-4] + " - stampa.png"))
-        voce = [rel, tema, info["larg"], info["alt"], info["colori"], info["punti"], info.get("formato", ".pes"),
-                info.get("sequenza", [])]
+    fatti, blocco = [], []                      # blocco: [(i, rel, voce, emb|None, sha1, cartella)] non ancora salvati
+
+    def salva_blocco():
+        global EMB, _n_emb
+        if not blocco:
+            return
         with _IMP_LOCK:
-            i = _aggiungi_al_catalogo(voce)
             f = os.path.join(CAT, "importati.json")
             try:
                 elenco = json.load(open(f, encoding="utf-8"))
             except (OSError, ValueError):
                 elenco = []
-            elenco.append(voce)
+            elenco += [x[2] for x in blocco]
             with open(f + ".tmp", "w", encoding="utf-8") as fh:
                 json.dump(elenco, fh, ensure_ascii=False)
             os.replace(f + ".tmp", f)
-            # impronta SigLIP: in coda a clip_extra (sul disco) e subito nella ricerca per significato
-            fe = os.path.join(d, "emb.npy")
-            if os.path.exists(fe):
-                ve = np.load(fe).astype(np.float32)
+            # impronte SigLIP: in coda a clip_extra (sul disco) e subito nella ricerca per significato
+            con = [x for x in blocco if x[3] is not None]
+            if con:
                 fx, fj = os.path.join(CAT, "clip_extra.npy"), os.path.join(CAT, "clip_extra.json")
                 try:
                     ex, px = np.load(fx), json.load(open(fj, encoding="utf-8"))
                 except (OSError, ValueError):
-                    ex, px = np.zeros((0, len(ve)), np.float16), []
-                np.save(fx, np.vstack([ex, ve[None].astype(np.float16)]))
+                    ex, px = np.zeros((0, len(con[0][3])), np.float16), []
+                np.save(fx, np.vstack([ex] + [x[3][None].astype(np.float16) for x in con]))
                 with open(fj, "w", encoding="utf-8") as fh:
-                    json.dump(px + [rel], fh, ensure_ascii=False)
+                    json.dump(px + [x[1] for x in con], fh, ensure_ascii=False)
                 if EMB is not None and _n_emb >= N_DATIJS:
                     if len(EMB) < len(DATI):
                         EMB = np.vstack([EMB[:_n_emb], np.zeros((len(DATI) - _n_emb, EMB.shape[1]), np.float32)])
-                    EMB[i] = ve
+                    for x in con:
+                        EMB[x[0]] = x[3]
                     _n_emb = len(DATI)
-        _miniature_nuove(i, rel)
-        _imp_segna_sorgente(info["sha1"], rel)
-        shutil.rmtree(d, ignore_errors=True)
-        fatti.append({"i": i, "percorso": rel})
+            s = _imp_sorgenti()
+            s.update({x[4]: x[1] for x in blocco})
+            with open(F_IMP_SORG + ".tmp", "w", encoding="utf-8") as fh:
+                json.dump(s, fh, ensure_ascii=False)
+            os.replace(F_IMP_SORG + ".tmp", F_IMP_SORG)
+        for x in blocco:                         # tolti dall'attesa solo ora che sono registrati nel catalogo
+            shutil.rmtree(x[5], ignore_errors=True)
+        prepara_colori()                         # colori nuovi abbinati ai fili che ho (una volta per blocco)
+        calcola_fili()
+        blocco.clear()
+
+    for v in body.get("voci", []):
+        try:
+            d = _imp_dir(v.get("id"))
+            info = json.load(open(os.path.join(d, "info.json"), encoding="utf-8"))
+            tema = pulisci(v.get("tema") or info["tema"])[:60]
+            racc = pulisci(v.get("raccolta") or info.get("raccolta") or tr("Importati"))[:60]
+            nome = pulisci(v.get("nome") or info["nome"])[:50]
+            # Windows non apre percorsi oltre 260 caratteri: raccolta e nome si accorciano (spazio per « (n)» e
+            # « - stampa.png»)
+            resto = 245 - len(os.path.join(OUT, tema)) - len(" - stampa.png") - 6
+            if len(racc) + len(nome) + 2 > resto:
+                racc = racc[:max(12, resto // 2)].rstrip(" .-_")
+                nome = nome[:max(12, resto - len(racc) - 2)].rstrip(" .-_")
+            os.makedirs(os.path.join(OUT, tema, racc), exist_ok=True)
+            rel = os.path.join(tema, racc, nome + ".pes")
+            n = 2
+            while os.path.exists(os.path.join(OUT, rel)):
+                rel = os.path.join(tema, racc, f"{nome} ({n}).pes")
+                n += 1
+            shutil.copyfile(os.path.join(d, "disegno.pes"), os.path.join(OUT, rel))
+            if os.path.exists(os.path.join(d, "stampa.png")):    # accanto al PES: «<nome> - stampa.png»
+                shutil.copyfile(os.path.join(d, "stampa.png"), os.path.join(OUT, rel[:-4] + " - stampa.png"))
+            for n_all, h_all in info.get("allegati", []):        # istruzioni, PDF: nella cartella della raccolta
+                src_all = os.path.join(IMP_DIR, "_allegati", h_all)
+                if not os.path.exists(src_all):
+                    continue
+                dest_all = os.path.join(OUT, tema, racc, pulisci(n_all)[:80])
+                if os.path.exists(dest_all) and os.path.getsize(dest_all) == os.path.getsize(src_all):
+                    continue                                 # c'è già (altro disegno della stessa raccolta)
+                b_all, e_all = os.path.splitext(dest_all)
+                k_all = 2
+                while os.path.exists(dest_all):
+                    dest_all = f"{b_all} ({k_all}){e_all}"
+                    k_all += 1
+                shutil.copyfile(src_all, dest_all)
+            voce = [rel, tema, info["larg"], info["alt"], info["colori"], info["punti"], info.get("formato", ".pes"),
+                    info.get("sequenza", [])]
+            fe = os.path.join(d, "emb.npy")
+            ve = np.load(fe).astype(np.float32) if os.path.exists(fe) else None
+            if ve is None:                       # impronta mancata durante l'analisi: si calcola adesso
+                try:
+                    import importa as IM
+                    import pyembroidery
+                    ve = emb_immagine(IM.miniatura_semplice(pyembroidery.read(os.path.join(d, "disegno.pes"))))
+                except Exception as e:
+                    print("impronta non calcolata:", e)
+            with _IMP_LOCK:
+                i = _aggiungi_al_catalogo(voce, ricalcola=False)
+            _miniature_veloci(i, rel, d)
+            blocco.append((i, rel, voce, ve, info["sha1"], d))
+            fatti.append({"i": i, "percorso": rel})
+            _CONF["messi"] += 1
+        except Exception as e:
+            _CONF["errori"].append(f"{v.get('id')}: {e}"[:200])
+        _CONF["fatti"] += 1
+        if len(blocco) >= 50:
+            salva_blocco()
+    salva_blocco()
+    _imp_pulisci_allegati()
     return {"fatti": fatti}
+
+
+def _imp_pulisci_allegati():
+    """Allegati in attesa che nessun disegno in attesa usa più (messi in libreria o scartati)."""
+    cart = os.path.join(IMP_DIR, "_allegati")
+    if not os.path.isdir(cart):
+        return
+    usati = {h for b in imp_elenco() for _n, h in b.get("allegati", [])}
+    for f in os.listdir(cart):
+        if f not in usati:
+            try:
+                os.remove(os.path.join(cart, f))
+            except OSError:
+                pass
+
+
+COL_VAR_F = os.path.join(CAT, "colori_varianti.json")
+COL_SCRIVIBILI = (".pes", ".jef", ".vp3", ".xxx", ".u01")
+
+
+def _col_var():
+    try:
+        return json.load(open(COL_VAR_F, encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def _col_var_salva(cv):
+    with open(COL_VAR_F + ".tmp", "w", encoding="utf-8") as fh:
+        json.dump(cv, fh, ensure_ascii=False)
+    os.replace(COL_VAR_F + ".tmp", COL_VAR_F)
+
+
+def _fili_di(pat):
+    """[[#colore, descrizione, numero di catalogo]] uno per blocco di colore."""
+    out = []
+    for _s, t in pat.get_as_colorblocks():
+        c = (t.color if t is not None and t.color is not None else 0x333333) & 0xFFFFFF
+        out.append(["#%06x" % c, (getattr(t, "description", None) or "") if t is not None else "",
+                    (getattr(t, "catalog_number", None) or "") if t is not None else ""])
+    return out
+
+
+def _scrivi_fili(i, fili):
+    """Riscrive il file del disegno i con questi fili (stessi punti) e aggiorna miniature e abbinamenti."""
+    import pyembroidery
+    rel = DATI[i][0]
+    full = os.path.join(OUT, rel)
+    ext = os.path.splitext(rel)[1].lower()
+    pat = pyembroidery.read(full)
+    if pat is None:
+        raise ValueError("non riesco a leggere il file")
+    n = sum(1 for _ in pat.get_as_colorblocks())
+    if n != len(fili):
+        raise ValueError(f"hanno un numero di colori diverso ({len(fili)} contro {n})")
+    nuovi = []
+    for h, desc, cat in fili:
+        f = pyembroidery.EmbThread()
+        f.color = int(h[1:], 16)
+        if desc:
+            f.description = desc
+        if cat:
+            f.catalog_number = cat
+        nuovi.append(f)
+    pat.threadlist = nuovi
+    bk = os.path.join(CAT, "colori_backup")
+    os.makedirs(bk, exist_ok=True)
+    copia = os.path.join(bk, f"{i}_{os.path.basename(rel)}")
+    if not os.path.exists(copia):                           # la prima versione del file resta sempre
+        shutil.copy2(full, copia)
+    tmp = full + ".tmp" + ext
+    if ext == ".pes":
+        pyembroidery.write_pes(pat, tmp, {"pes version": 6})
+    else:
+        pyembroidery.write(pat, tmp)
+    os.replace(tmp, full)
+    DATI[i][7] = [f[0] for f in fili][:40]
+    prepara_colori()
+    calcola_fili()
+    _miniature_nuove(i, rel)
+
+
+def colori_di(i):
+    """Le versioni dei colori di un disegno (per la scheda), o None se ne ha una sola."""
+    v = _col_var().get(DATI[i][0])
+    if not v or len(v.get("var", [])) < 2:
+        return None
+    return {"attiva": v["attiva"], "var": [{"nome": x["nome"], "seq": [f[0] for f in x["fili"]]} for x in v["var"]]}
+
+
+def colori_scegli(body):
+    i, k = int(body.get("i", -1)), int(body.get("k", -1))
+    if not 0 <= i < len(DATI) or i in TOLTI:
+        raise ValueError("disegno non trovato")
+    cv = _col_var()
+    v = cv.get(DATI[i][0])
+    if not v or not 0 <= k < len(v["var"]):
+        raise ValueError("versione dei colori non trovata")
+    with _COL_LOCK:
+        _scrivi_fili(i, v["var"][k]["fili"])
+        v["attiva"] = k
+        _col_var_salva(cv)
+    return colori_di(i)
+
+
+_COL_LOCK = threading.Lock()
+
+
+def imp_prendi_colori(body):
+    """Il disegno importato è un doppione con altri colori: il file del catalogo prende i suoi colori (stesse forme,
+    cambia solo la tabella dei fili). Le versioni restano tutte: nella scheda si passa dall'una all'altra."""
+    import pyembroidery
+    d = _imp_dir(body.get("id"))
+    info = json.load(open(os.path.join(d, "info.json"), encoding="utf-8"))
+    i = int((info.get("doppione") or {}).get("i", -1))
+    if not 0 <= i < len(DATI) or i in TOLTI:
+        raise ValueError("il disegno del catalogo non c'è più")
+    rel = DATI[i][0]
+    ext = os.path.splitext(rel)[1].lower()
+    if ext not in COL_SCRIVIBILI:
+        raise ValueError(f"i file {ext} non tengono i colori o non so riscriverli")
+    nuovo, vecchio = pyembroidery.read(os.path.join(d, "disegno.pes")), pyembroidery.read(os.path.join(OUT, rel))
+    if nuovo is None or vecchio is None:
+        raise ValueError("non riesco a leggere uno dei due file")
+    fili = _fili_di(nuovo)
+    with _COL_LOCK:
+        cv = _col_var()
+        v = cv.get(rel) or {"attiva": 0, "var": [{"nome": "Originali", "fili": _fili_di(vecchio)}]}
+        nome = "da " + os.path.basename(info.get("origine") or info.get("fonte") or "importato")
+        k = next((n for n, x in enumerate(v["var"]) if [f[0] for f in x["fili"]] == [f[0] for f in fili]), None)
+        if k is None:
+            v["var"].append({"nome": nome, "fili": fili})
+            k = len(v["var"]) - 1
+        _scrivi_fili(i, v["var"][k]["fili"])
+        v["attiva"] = k
+        cv[rel] = v
+        _col_var_salva(cv)
+    imp_scarta({"ids": [body.get("id")]})
+    return {"ok": True, "i": i, "percorso": rel}
 
 
 def imp_scarta(body):
@@ -2041,11 +2554,13 @@ def imp_scarta(body):
             pass
         shutil.rmtree(d, ignore_errors=True)
         n += 1
+    _imp_pulisci_allegati()
     return {"scartati": n}
 
 
 def imp_cartella(body):
     import importa as IM
+    IM.PREFERITO = FORMATO
     cart = os.path.expandvars(os.path.expanduser(str(body.get("percorso") or "").strip().strip('"')))
     giorni = body.get("giorni")
     giorni = float(giorni) if giorni not in (None, "", 0, "0") else None
@@ -2067,7 +2582,8 @@ def setup_info():
     cfg = {k: v for k, v in CFG.items() if not k.startswith("chiave_")}      # le chiavi non tornano alla pagina
     return {"primo_avvio": PRIMO_AVVIO, "config": cfg,
             "chiavi": {"pixabay": bool(CFG.get("chiave_pixabay")), "deepseek": bool(CFG.get("chiave_deepseek"))}, "config_file": CONFIG.FILE, "macchine": MACCHINE.elenco(),
-            "fili": FILI.marche(), "lavoro": dict(_LAVORO), "disegni": len(DATI)}
+            "fili": FILI.marche(), "lavoro": dict(_LAVORO), "disegni": len(DATI), "avvio": AVVIO,
+            "importa": imp_barra()}
 
 
 def cartelle(p):
@@ -2173,7 +2689,7 @@ def _segui(proc, log, tipo, al_termine):
     al_termine()
 
 
-def avvia_lavoro(tipo):
+def avvia_lavoro(tipo, extra=None):
     """tipo: «riordino» (cartelle dell'utente -> archivio, poi riavvio del server) o «clip» (ricerca per
     significato: impronte SigLIP di tutte le miniature, riprende da dove era)."""
     import subprocess
@@ -2184,25 +2700,33 @@ def avvia_lavoro(tipo):
     arc = CFG["archivio"] if tipo == "riordino" else OUT
     os.makedirs(os.path.join(arc, "_catalogo"), exist_ok=True)
     log = os.path.join(arc, "_catalogo", f"{tipo}.log")
-    script = "riordina.py" if tipo == "riordino" else "indicizza_clip.py"
-    args = [sys.executable, "-u", os.path.join(QUI, script)] + (["config"] if tipo == "riordino" else [OUT])
+    if tipo == "sistema" and (_IMP_STATO["attivo"] or _CONF["attivo"]):
+        raise ValueError("aspetta che finisca l'importazione in corso")
+    script = {"riordino": "riordina.py", "clip": "indicizza_clip.py", "sistema": "sistema_libreria.py"}[tipo]
+    args = [sys.executable, "-u", os.path.join(QUI, script)] + (["config"] if tipo == "riordino" else [OUT]) + (extra or [])
     fh = open(log, "w", encoding="utf-8")
     env = dict(os.environ, PYTHONIOENCODING="utf-8")
     p = subprocess.Popen(args, stdout=fh, stderr=subprocess.STDOUT, cwd=QUI, env=env,
                          creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     _LAV_PROC[0] = p
-    _LAVORO.update(tipo=tipo, fatti=0, totale=0, msg="", finito=False, errore="", fase="", riavvio=False)
+    _LAVORO.update(tipo=tipo, fatti=0, totale=0, msg="", finito=False, errore="", fase="", riavvio=False,
+                   modo=(extra or [""])[0])
 
     def fine():
+        if tipo == "sistema":                    # anteprima: solo il rapporto; applica/annulla: catalogo nuovo
+            _LAVORO["finito"] = True
+            if (extra or [""])[0] in ("applica", "annulla"):
+                riavvia()
+            return
         if tipo == "riordino":
             c = dict(CFG, pronto=True)
             CONFIG.salva(c)
             _LAVORO["finito"] = True
             riavvia()
         elif tipo == "clip" and not _LAVORO.get("errore"):
-            for script, extra in (("temi_immagine.py", []), ("varianti.py", ["--json"])):
+            for script, argx in (("temi_immagine.py", []), ("varianti.py", ["--json"])):
                 try:                            # VARIE smistati guardando l'immagine, poi stesso disegno in più misure
-                    subprocess.run([sys.executable, os.path.join(QUI, script), OUT] + extra, cwd=QUI, timeout=1800,
+                    subprocess.run([sys.executable, os.path.join(QUI, script), OUT] + argx, cwd=QUI, timeout=1800,
                                    capture_output=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
                 except Exception:
                     pass
@@ -2216,6 +2740,95 @@ def avvia_lavoro(tipo):
 
     threading.Thread(target=_segui, args=(p, log, tipo, fine), daemon=True).start()
     return dict(_LAVORO)
+
+
+# ---------------- aggiornamenti (aggiorna.py): controllo all'avvio, installazione con un clic ----------------
+AGG = {"info": None, "attivo": False, "stato": "", "errore": ""}
+AGG_F = os.path.join(CONFIG.CARTELLA, "aggiornamento.json")
+
+
+def _occupato():
+    """Un lavoro che un aggiornamento (o il suo riavvio) romperebbe."""
+    if _IMP_STATO.get("attivo") or _CONF.get("attivo"):
+        return "c'è un'importazione o un «Metti in libreria» in corso"
+    if _LAVORO.get("tipo") and not _LAVORO.get("finito") and not _LAVORO.get("errore"):
+        return "c'è un lavoro in corso (riordino, analisi o sistemazione)"
+    return None
+
+
+def agg_controlla(forza=False):
+    import aggiorna as AG
+    if not forza:
+        try:
+            c = json.load(open(AGG_F, encoding="utf-8"))
+            if time.time() - c.get("controllato", 0) < 20 * 3600 and c.get("attuale") == AG.versione():
+                AGG["info"] = c
+                return c
+        except (OSError, ValueError):
+            pass
+    c = AG.controlla()
+    AGG["info"] = c
+    try:
+        os.makedirs(os.path.dirname(AGG_F), exist_ok=True)
+        with open(AGG_F, "w", encoding="utf-8") as fh:
+            json.dump(c, fh, ensure_ascii=False)
+    except OSError:
+        pass
+    return c
+
+
+def agg_info():
+    import aggiorna as AG
+    c = AGG["info"] or {}
+    nuova = c.get("nuova") if c.get("nuova") and AG.piu_nuova(c["nuova"], AG.versione()) else None
+    return {"attuale": AG.versione(), "nuova": nuova, "note": c.get("note", "") if nuova else "",
+            "pagina": c.get("pagina"), "auto": CFG.get("aggiornamenti", True), "precedente": AG.precedente(),
+            "attivo": AGG["attivo"], "stato": AGG["stato"], "errore": AGG["errore"]}
+
+
+def agg_azione(body):
+    import aggiorna as AG
+    az = body.get("azione")
+    if az == "auto":
+        CFG["aggiornamenti"] = bool(body.get("valore"))
+        c = CONFIG.leggi()
+        c["aggiornamenti"] = CFG["aggiornamenti"]
+        CONFIG.salva(c)
+        return agg_info()
+    if az == "controlla":
+        agg_controlla(forza=True)
+        return agg_info()
+    if az not in ("installa", "ripristina"):
+        raise ValueError("azione non valida")
+    if AGG["attivo"]:
+        raise ValueError("aggiornamento già in corso")
+    perche = _occupato()
+    if perche:
+        raise ValueError(perche + ": aspetta che finisca e riprova")
+    info = AGG["info"] or {}
+    if az == "installa" and not info.get("nuova"):
+        raise ValueError("nessuna versione nuova")
+
+    def lavora():
+        AGG.update(attivo=True, errore="", stato="")
+        try:
+            def avanza(m):
+                AGG["stato"] = m
+                print("aggiornamento:", m, flush=True)
+            if az == "installa":
+                AG.installa(info, avanza)
+            else:
+                AG.ripristina(avanza)
+            try:
+                os.remove(AGG_F)                         # versione cambiata: al riavvio si ricontrolla
+            except OSError:
+                pass
+            riavvia()
+        except Exception as e:
+            AGG["errore"] = str(e)
+            AGG["attivo"] = False
+    threading.Thread(target=lavora, daemon=True).start()
+    return agg_info()
 
 
 def riavvia():
@@ -2286,8 +2899,8 @@ class H(BaseHTTPRequestHandler):
                 i = int(m.group(1))
                 hd = os.path.join(CAT, "img_hd", f"{i}.webp")
                 f = miniatura_hd(i)                                   # miniatura 'bella': generata la prima volta
-                if f is not None:
-                    try:
+                if f is not None and i not in _VELOCI:
+                    try:                                              # appena importati: c'è già quella veloce
                         f.result(timeout=60)
                     except Exception:
                         pass
@@ -2318,6 +2931,8 @@ class H(BaseHTTPRequestHandler):
                               if r in IDX and IDX[r] not in TOLTI]
                 _o = PATCH_ORIG.get(DATI[i][0])
                 v["patch_di"] = {"i": IDX[_o], "nome": NOMI[IDX[_o]]} if _o in IDX else None
+                v["allegati"] = allegati_di(i)
+                v["colori_var"] = colori_di(i)
                 v.update(percorso=DATI[i][0], seq=DATI[i][7] if len(DATI[i]) > 7 else [], simili=EMB is not None and i < _n_emb, n_serie=len(serie_di(i)),
                          varianti=[{"i": j, "nome": NOMI[j], "w": DATI[j][2], "h": DATI[j][3], "tel": telaio_min(DATI[j][2], DATI[j][3])}
                                    for j in GRUPPO.get(VAR.get(i), [])],
@@ -2383,8 +2998,30 @@ class H(BaseHTTPRequestHandler):
                 b = io.BytesIO()
                 PATCH.anteprima(pat, inf, 900, tessuto=tess).save(b, "WEBP", quality=88)
                 return self._send(200, b.getvalue(), "image/webp")
+            if u.path == "/api/sistema":                          # «Sistema la libreria»: ultimo rapporto
+                r = {}
+                try:
+                    r = json.load(open(os.path.join(CAT, "sistema_rapporto.json"), encoding="utf-8"))
+                except (OSError, ValueError):
+                    pass
+                try:
+                    dia = json.load(open(os.path.join(CAT, "sistema_diario.json"), encoding="utf-8"))
+                    r["annullabile"] = dia.get("data")
+                except (OSError, ValueError):
+                    r["annullabile"] = None
+                return self._send(200, r)
+            if u.path == "/api/allegato":                          # apre un allegato (PDF, istruzioni) del disegno
+                i = int(p["i"])
+                cart = os.path.dirname(os.path.join(OUT, DATI[i][0]))
+                f = os.path.join(cart, os.path.basename(p.get("f", "")))
+                if os.path.splitext(f)[1].lower() not in ALLEGATI or not os.path.isfile(f):
+                    return self._send(404, {"errore": "allegato non trovato"})
+                os.startfile(f)
+                return self._send(200, {"ok": True})
             if u.path == "/api/digit":
                 return self._send(200, digit_elenco())
+            if u.path == "/api/aggiornamento":
+                return self._send(200, agg_info())
             if u.path == "/api/setup":                              # OpenHoop: primo avvio e impostazioni
                 return self._send(200, setup_info())
             if u.path == "/api/cartelle":
@@ -2446,6 +3083,16 @@ class H(BaseHTTPRequestHandler):
 
     def do_POST(self):
         n = int(self.headers.get("Content-Length", 0))
+        if self.path.startswith("/api/importa/grezzo"):     # file scelto o trascinato, byte così come sono
+            # (in base64 dentro un JSON uno zip di 600 MB supera la lunghezza massima di una stringa del browser)
+            try:
+                nome = os.path.basename(urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).get("nome", ["file"])[0])
+                raw = self.rfile.read(n)
+                if len(raw) < n:
+                    raise ValueError("caricamento interrotto")
+                return self._send(200, imp_accoda([imp_file_su_disco(nome, raw)]))
+            except Exception as e:
+                return self._send(500, {"errore": str(e)})
         body = json.loads(self.rfile.read(n) or b"{}")
         try:
             if self.path == "/api/esci":                     # «Esci» dall'icona di OpenHoop.exe
@@ -2469,12 +3116,14 @@ class H(BaseHTTPRequestHandler):
                 return self._send(200, digit_nuovo(body))
             if self.path == "/api/setup":
                 return self._send(200, setup_salva(body))
+            if self.path == "/api/aggiornamento":
+                return self._send(200, agg_azione(body))
             if self.path == "/api/setup/avvia":                     # «riordino» o «clip»
                 return self._send(200, avvia_lavoro(body.get("tipo", "")))
             if self.path == "/api/importa/file":                    # file trascinato o scelto (base64)
                 raw = base64.b64decode(str(body.get("dati", "")).split(",", 1)[-1])
                 nome = os.path.basename(str(body.get("nome") or "file"))
-                return self._send(200, imp_accoda([("file", (nome, raw), nome)]))
+                return self._send(200, imp_accoda([imp_file_su_disco(nome, raw)]))
             if self.path == "/api/importa/cartella":
                 return self._send(200, imp_cartella(body))
             if self.path == "/api/importa/link":
@@ -2482,10 +3131,22 @@ class H(BaseHTTPRequestHandler):
                 if not links:
                     raise ValueError("scrivi un link")
                 return self._send(200, imp_accoda([("link", x, x) for x in links]))
+            if self.path == "/api/sistema":                        # {modo: anteprima|applica|annulla, passi: [...]}
+                modo = body.get("modo")
+                if modo not in ("anteprima", "applica", "annulla"):
+                    raise ValueError("modo non valido")
+                passi = [x for x in body.get("passi", []) if x in ("allegati", "nomi", "temi", "doppioni")]
+                if modo != "annulla" and not passi:
+                    raise ValueError("scegli almeno una correzione")
+                return self._send(200, avvia_lavoro("sistema", [modo] + (["passi=" + ",".join(passi)] if passi else [])))
             if self.path == "/api/importa/conferma":
-                return self._send(200, imp_conferma(body))
+                return self._send(200, imp_conferma_avvia(body))
             if self.path == "/api/importa/scarta":
                 return self._send(200, imp_scarta(body))
+            if self.path == "/api/importa/colori":
+                return self._send(200, imp_prendi_colori(body))
+            if self.path == "/api/colori/scegli":
+                return self._send(200, colori_scegli(body))
             if self.path in ("/api/digit/rifai", "/api/digit/scarta", "/api/digit/salva", "/api/digit/conferma", "/api/digit/ai"):
                 fn = {"rifai": digit_rifai, "scarta": digit_scarta, "salva": digit_salva, "conferma": digit_conferma, "ai": digit_ai}
                 return self._send(200, fn[self.path.rsplit("/", 1)[1]](body))
@@ -2601,10 +3262,19 @@ if __name__ == "__main__":
     srv.request_queue_size = 256
     url = f"http://127.0.0.1:{PORTA}/"
     threading.Thread(target=_sorveglia_emb, daemon=True).start()
+    if CFG.get("aggiornamenti", True) and not os.environ.get("OPENHOOP_NO_AGG"):
+        def _agg_avvio():
+            time.sleep(20)                                  # dopo l'avvio, senza rallentarlo
+            try:
+                agg_controlla()
+            except Exception as e:
+                print("controllo aggiornamenti non riuscito:", e, flush=True)
+        threading.Thread(target=_agg_avvio, daemon=True).start()
     print(f"OpenHoop: {url}  ({len(DATI)} disegni, CLIP {'sì' if EMB is not None else 'no'}"
           f"{', primo avvio' if PRIMO_AVVIO else ''})", flush=True)
     if not PRIMO_AVVIO:
         threading.Thread(target=carica_tolti, daemon=True).start()
+        imp_riprendi()                                      # importazione interrotta da un riavvio: riparte
     if clip_da_fare():                                      # ricerca per significato: si prepara da sola
         try:
             avvia_lavoro("clip")

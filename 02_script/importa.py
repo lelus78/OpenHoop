@@ -29,22 +29,80 @@ ACCETTATI = FORMATI | {".zip"}
 MAX_FILE = 3000                      # file da ricamo per importazione (una cartella enorme non blocca il server)
 MAX_BYTE = 400_000_000               # zip scompattati in tutto
 UA = {"User-Agent": "archivio-ricami/1.0 (uso personale)"}
+# istruzioni, tabelle dei colori, PDF di montaggio: vanno con i disegni della loro cartella (o di quelle sotto)
+ALLEGATI = {".pdf", ".txt", ".rtf", ".doc", ".docx", ".odt", ".htm", ".html", ".jpg", ".jpeg", ".png", ".gif", ".bmp"}
+IMMAGINI = {".jpg", ".jpeg", ".png", ".gif", ".bmp"}
+MAX_ALLEGATO = 20_000_000
+MAX_ALLEGATI = 150_000_000           # in tutto, per importazione
 
 
-def _zip(nome, raw, out, prof=0, tot=None):
-    """Scompatta in memoria (anche zip dentro zip, fino a 3 livelli). out: [(percorso_relativo, byte)]."""
-    tot = tot if tot is not None else [0]
+PREFERITO = ".pes"                  # formato della macchina dell'utente (config «formato»): vince sugli altri
+
+
+def prio(e):
+    """Ordine dei formati quando lo stesso disegno c'è in più formati: prima quello della macchina dell'utente
+    (i suoi colori sono quelli pensati per i suoi fili), poi l'ordine solito di riordina."""
+    return 0 if e == PREFERITO else RI.PRIO.get(e, 98) + 1
+
+
+def nome_zip(i):
+    """Nome di un file nello zip. Senza il segno «UTF-8» Python lo legge come DOS occidentale (cp437): gli zip fatti
+    su Windows russi (cp866) diventano «╜½·½Γ┐╗δ» invece di «логотипы». Si prova UTF-8, poi il cirillico DOS se
+    dà parole intere in cirillico (almeno 3 lettere di fila), altrimenti resta com'è (accenti occidentali)."""
+    if i.flag_bits & 0x800 or i.filename.isascii():
+        return i.filename
     try:
-        z = zipfile.ZipFile(io.BytesIO(raw))
+        b = i.filename.encode("cp437")
+    except UnicodeEncodeError:
+        return i.filename
+    try:
+        return b.decode("utf-8")
+    except UnicodeDecodeError:
+        pass
+    ru = b.decode("cp866", "replace")
+    alti = [c for c in ru if not c.isascii()]
+    if alti and all("Ѐ" <= c <= "ӿ" or c == "№" for c in alti) and re.search("[Ѐ-ӿ]{3}", ru):
+        return ru
+    return i.filename
+
+
+def _nomi_zip(z):
+    for i in z.infolist():
+        i.filename = nome_zip(i)    # si legge sempre con l'oggetto ZipInfo: l'intestazione usa orig_filename
+    return z
+
+
+def _zip(nome, raw, out, prof=0, tot=None, allegati=None):
+    """Scompatta in memoria (anche zip dentro zip, fino a 3 livelli). out: [(percorso_relativo, byte)].
+    allegati (lista o None): ci finiscono [(percorso_relativo, byte)] di PDF, istruzioni, tabelle dei colori."""
+    tot = tot if tot is not None else [0, 0]
+    try:
+        z = _nomi_zip(zipfile.ZipFile(io.BytesIO(raw)))
     except zipfile.BadZipFile:
+        if prof == 0:                   # prima si scartava in silenzio: l'utente non capiva perché non entrava niente
+            raise ValueError("zip rovinato o incompleto (si sta ancora scaricando?)")
         return
     base = os.path.splitext(os.path.basename(nome))[0]
+    if allegati is not None:
+        for i in z.infolist():
+            e = os.path.splitext(i.filename)[1].lower()
+            if not i.is_dir() and e in ALLEGATI and 0 < i.file_size <= MAX_ALLEGATO and "__macosx" not in i.filename.lower()                     and tot[1] + i.file_size <= MAX_ALLEGATI:
+                tot[1] += i.file_size
+                allegati.append((base + "/" + i.filename, z.read(i)))
+    # dello stesso disegno in più formati (raccolte vendute con PES, DST, JEF, VP3… di ognuno) si legge solo il
+    # formato migliore: lo zip pesa un settimo e non sfora il limite
+    migliore = {}
     for i in z.infolist():
-        if i.is_dir() or len(out) >= MAX_FILE:
-            continue
         e = os.path.splitext(i.filename)[1].lower()
-        if e not in ACCETTATI or "__macosx" in i.filename.lower():
+        if i.is_dir() or e not in ACCETTATI or "__macosx" in i.filename.lower():
             continue
+        k = i.filename if e in (".zip", ".xs") else _chiave(i.filename)
+        if k not in migliore or prio(e) < prio(os.path.splitext(migliore[k].filename)[1].lower()):
+            migliore[k] = i
+    for i in migliore.values():
+        if len(out) >= MAX_FILE:
+            raise ValueError(f"più di {MAX_FILE} disegni: importa una parte alla volta")
+        e = os.path.splitext(i.filename)[1].lower()
         tot[0] += i.file_size
         if tot[0] > MAX_BYTE:
             raise ValueError("archivio troppo grande")
@@ -52,19 +110,90 @@ def _zip(nome, raw, out, prof=0, tot=None):
         rel = base + "/" + i.filename
         if e == ".zip":
             if prof < 3:
-                _zip(rel, dati, out, prof + 1, tot)
+                _zip(rel, dati, out, prof + 1, tot, allegati)
         else:
             out.append((rel, dati))
 
 
-def espandi(nome, raw):
-    """Un file (o uno zip) -> [(percorso_relativo, byte)] dei soli file da ricamo."""
+_SUFF_FORMATO = re.compile(r"(?:[\s_.\-]+in)?[\s_.\-]+(?:" + "|".join(sorted((e.strip(".") for e in FORMATI), key=len, reverse=True))
+                           + r")(?:[\s_\-]*(?:format|file|files))?$", re.I)
+
+
+def _nome_pulito(b):
+    """«4 in pes» / «rose_dst» / «cat-PES» -> «4» / «rose» / «cat» (il formato scritto nel nome non conta)."""
+    p = _SUFF_FORMATO.sub("", b).strip(" _-.")
+    return p or b
+
+
+def _chiave(rel):
+    """Stesso disegno = stessa cartella (senza le cartelle «PES», «DST»…) + stesso nome pulito."""
+    parti = [p for p in re.split(r"[\\/]", rel) if p]
+    cart = [p for p in parti[:-1] if not RI.tecnica(p)]
+    return ("/".join(cart).lower(), _nome_pulito(os.path.splitext(parti[-1])[0]).lower())
+
+
+def espandi(nome, raw, allegati=None):
+    """Un file (o uno zip) -> [(percorso_relativo, byte)] dei soli file da ricamo (allegati: vedi _zip)."""
     e = os.path.splitext(nome)[1].lower()
     if e == ".zip":
         out = []
-        _zip(nome, raw, out)
+        _zip(nome, raw, out, allegati=allegati)
         return out
     return [(nome, raw)] if e in FORMATI else []
+
+
+def _dir(rel):
+    return "/".join(p for p in re.split(r"[\\/]", rel)[:-1] if p).lower()
+
+
+def allegati_vicini(percorso, cache=None):
+    """Disegno preso da una cartella del disco: gli allegati della sua cartella (o di quella sopra, se nella sua
+    non ce ne sono: «Baby Dinosaur/istruzioni.pdf» per «Baby Dinosaur/1/4 in.pes»). -> [(percorso_rel, byte)]"""
+    cache = {} if cache is None else cache
+    d = os.path.dirname(os.path.abspath(percorso))
+    for cart in (d, os.path.dirname(d)):
+        if cart not in cache:
+            trovati = []
+            try:
+                for f in sorted(os.listdir(cart)):
+                    p = os.path.join(cart, f)
+                    if os.path.splitext(f)[1].lower() in ALLEGATI and os.path.isfile(p) and 0 < os.path.getsize(p) <= MAX_ALLEGATO:
+                        trovati.append((f, p))
+            except OSError:
+                pass
+            cache[cart] = trovati
+        if cache[cart]:
+            return [(os.path.basename(d) + "/" + f, open(p, "rb").read()) for f, p in cache[cart]]
+    return []
+
+
+def assegna_allegati(gruppi, allegati):
+    """Mette in ogni disegno (d["allegati"] = [(nome, byte)]) gli allegati della sua cartella o, se non ce ne sono,
+    di quella sopra (PDF di una raccolta con i disegni divisi in sottocartelle per misura o per formato).
+    Le immagini che sono solo le anteprime dei disegni (stesso nome) o troppe (una per disegno) si scartano."""
+    per_cart = {}
+    for rel, raw in allegati:
+        per_cart.setdefault(_dir(rel), []).append((re.split(r"[\\/]", rel)[-1], raw))
+    nomi_per_cart = {}
+    for d in gruppi:
+        for rel, _raw in d["file"].values():
+            nomi_per_cart.setdefault(_dir(rel), set()).add(_nome_pulito(os.path.splitext(re.split(r"[\\/]", rel)[-1])[0]).lower())
+    for d in gruppi:
+        rel = next(iter(d["file"].values()))[0]
+        c = _dir(rel)
+        scelti = []
+        for _ in range(3):                                   # la sua cartella, poi su di due livelli al massimo
+            cand = per_cart.get(c)
+            if cand:
+                imm = [n for n, _r in cand if os.path.splitext(n)[1].lower() in IMMAGINI]
+                nomi = nomi_per_cart.get(c, set())
+                scelti = [(n, r) for n, r in cand if os.path.splitext(n)[1].lower() not in IMMAGINI
+                          or (len(imm) <= 10 and _nome_pulito(os.path.splitext(n)[0]).lower() not in nomi)]
+                break
+            if "/" not in c:
+                break
+            c = c.rsplit("/", 1)[0]
+        d["allegati"] = scelti
 
 
 def raggruppa(files):
@@ -75,8 +204,13 @@ def raggruppa(files):
         parti = [p for p in re.split(r"[\\/]", rel) if p]
         b, e = os.path.splitext(parti[-1])
         cart = [p for p in parti[:-1] if not RI.tecnica(p)]
-        k = ("/".join(cart).lower(), b.lower())
-        d = disegni.setdefault(k, {"nome": b, "raccolta": " - ".join(cart[-2:]) if cart else "", "file": {}})
+        k = _chiave(rel)
+        nb = _nome_pulito(b)
+        # «4», «4 in», «5x7», «10 cm» da soli non dicono niente: «Baby Dinosaur 4 in»
+        if len(nb) <= 16 and re.fullmatch(r"[\d\s_.\-x×]*(?:in|inch|inches|cm|mm|\")?[\d\s_.\-x×]*", nb, re.I) and re.search(r"\d", nb):
+            parola = next((c for c in reversed(cart) if not re.fullmatch(r"[\d\s_.\-]+", c)), "")
+            nb = f"{parola} {nb}".strip()
+        d = disegni.setdefault(k, {"nome": nb, "raccolta": " - ".join(cart[-2:]) if cart else "", "file": {}})
         d["file"][e.lower()] = (rel, raw)
     return list(disegni.values())
 
@@ -147,7 +281,7 @@ def firma(pat):
 def prepara(d):
     """Un disegno raggruppato -> (EmbPattern pronto per la Brother, info) o eccezione se nessun formato si legge."""
     errore = None
-    for ext in sorted(d["file"], key=lambda e: RI.PRIO.get(e, -1) if e != ".xs" else 99):
+    for ext in sorted(d["file"], key=lambda e: prio(e) if e != ".xs" else 999):
         rel, raw = d["file"][ext]
         try:
             pat, extra = _leggi(ext, raw)
@@ -222,8 +356,16 @@ def file_in_cartella(cartella, giorni=None):
                         out.append(p)
                 except OSError:
                     pass
-            if len(out) >= MAX_FILE:
-                return out
+    # stesso disegno in più formati (cartella estratta da una raccolta PES+DST+JEF…): solo il formato migliore
+    migliore = {}
+    for p in out:
+        e = os.path.splitext(p)[1].lower()
+        k = p if e in (".zip", ".xs") else _chiave(os.path.relpath(p, cartella))
+        if k not in migliore or prio(e) < prio(os.path.splitext(migliore[k])[1].lower()):
+            migliore[k] = p
+    out = list(migliore.values())
+    if len(out) > MAX_FILE:
+        raise ValueError(f"più di {MAX_FILE} disegni in questa cartella: importa una sottocartella alla volta")
     return out
 
 

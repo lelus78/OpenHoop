@@ -43,10 +43,16 @@ open source and tested on real stitch-outs: if something doesn't work on your ma
 - **Compositions** of several designs with **lettering** in 140 embroidery fonts.
 - **Digitizer** for simple flat-colour images, with stitch-by-stitch simulation; **find free designs** online
   (translated search, licences shown).
-- **Import** new downloads: files, zips, folders, links and xTool/Atomm `.xs` projects; duplicates are detected.
+- **Import** new downloads: files, zips, folders, links and xTool/Atomm `.xs` projects; duplicates are detected
+  (also between files of the same download), shown side by side, and the file in your machine's format is kept.
+  PDF instructions and colour charts stay next to the design.
+- **Fix your library** without starting over: attach the instructions left in the original folders, give clear names,
+  move «misc» designs to the right theme by looking at the picture, remove duplicates — preview first, undo anytime.
 - Favourites, collections, «already stitched» journal with photos.
 
 Everything runs **on your computer**: no account, no cloud, no subscription.
+From version 1.0.1 OpenHoop tells you when a new version is out and **updates itself with one click**
+(Settings → Updates): your designs and settings are not touched, and you can go back to the previous version.
 
 ## Screenshots
 
@@ -60,7 +66,7 @@ Everything runs **on your computer**: no account, no cloud, no subscription.
 
 ## Install (Windows 10/11)
 
-1. Download **`OpenHoop-1.0.zip`** from the [latest release](../../releases/latest) and unzip it where you like,
+1. Download **`OpenHoop-<version>.zip`** (e.g. `OpenHoop-1.0.1.zip`) from the [latest release](../../releases/latest) and unzip it where you like,
    e.g. `C:\OpenHoop`.
 2. Double-click **`OpenHoop.exe`**. The first time it offers to install what it needs: Python if missing, the
    libraries, the lettering fonts and the AI model for search by meaning (about **8 GB** of disk in total,
@@ -122,9 +128,11 @@ gratuiti. I file originali non vengono mai spostati né modificati e tutto resta
 > [segnalazione](../../issues): se i file si aprono, il telaio, i colori, la qualità dei punti e le toppe. Le foto sono benvenute.
 > Fai sempre prima una prova su un ritaglio di stoffa.
 
-**Installazione:** scarica **`OpenHoop-1.0.zip`** dall'[ultima versione](../../releases/latest), scompattalo e fai doppio clic su
+**Installazione:** scarica **`OpenHoop-<versione>.zip`** (es. `OpenHoop-1.0.1.zip`) dall'[ultima versione](../../releases/latest), scompattalo e fai doppio clic su
 **`OpenHoop.exe`**: la prima volta installa quello che serve (se Windows avvisa «PC protetto», scegli **Ulteriori
 informazioni → Esegui comunque**), poi si apre dall'icona sul desktop. Al primo avvio scegli lingua, cartelle dei
 ricami e macchina. Per chiuderlo: clic destro sull'icona vicino all'orologio → **Esci**.
+Dalla versione 1.0.1 OpenHoop avvisa quando c'è una versione nuova e **si aggiorna con un clic** (Impostazioni →
+Aggiornamenti), senza toccare i tuoi disegni e le impostazioni.
 
 Se OpenHoop ti è utile puoi [offrirmi un caffè su Ko-fi](https://ko-fi.com/openhoop) ☕.

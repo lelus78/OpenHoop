@@ -354,6 +354,15 @@ input[type=range] { width: 100%; accent-color: var(--accent); margin: 14px 0 2px
 .lavoro-bar { position: fixed; top: 0; left: 0; right: 0; z-index: 70; display: flex; align-items: center; gap: 12px; padding: 9px 18px; background: #f0b429; color: #1d1a14; font-weight: 600; font-size: 13.5px; box-shadow: 0 4px 14px #0003; }
 .lavoro-bar .giro { width: 16px; height: 16px; border-radius: 50%; border: 2.5px solid #1d1a1455; border-top-color: #1d1a14; animation: giro 0.9s linear infinite; flex: none; }
 .lavoro-bar small { font-weight: 500; opacity: .85; }
+.agg-card { position: fixed; right: 18px; bottom: 18px; z-index: 65; max-width: 380px; background: var(--surface); border: 1px solid var(--accent); border-radius: 14px; box-shadow: 0 10px 30px #0004; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; font-size: .88rem; }
+.agg-card b { font-size: .95rem; }
+.agg-card .riga { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+.agg-note { white-space: pre-wrap; font: inherit; font-size: .82rem; color: var(--muted); background: var(--surface-2); border-radius: 9px; padding: 10px 12px; max-height: 260px; overflow: auto; margin: 0; }
+.sis-rapporto details { margin: 6px 0; }
+.sis-rapporto summary { cursor: pointer; font-weight: 600; }
+.sis-rapporto .sis-es { font-size: 12px; color: var(--muted); padding: 2px 0 2px 14px; word-break: break-all; }
+.lavoro-bar .prog { flex: 0 0 220px; height: 8px; border-radius: 4px; background: #1d1a1426; overflow: hidden; }
+.lavoro-bar .prog i { display: block; height: 100%; background: #1d1a14; border-radius: 4px; transition: width .6s; }
 @keyframes giro { to { transform: rotate(360deg); } }
 .toast { position: fixed; right: 20px; bottom: 20px; z-index: 60; background: var(--ink); color: var(--bg); padding: 12px 16px; border-radius: 10px; box-shadow: 0 10px 30px #0004; font-weight: 600; max-width: 420px; }
 
@@ -394,13 +403,46 @@ input[type=range] { width: 100%; accent-color: var(--accent); margin: 14px 0 2px
 .imp-stato .err { color: var(--danger); font-weight: 400; display: block; margin-top: 4px; }
 .imp-barra { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; position: sticky; top: 0; z-index: 2; background: var(--bg); padding: 8px 0; border-bottom: 1px solid var(--line); }
 .imp-barra .grow { flex: 1; }
+.imp-filtri { flex-basis: 100%; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.imp-filtri .seg { position: static; box-shadow: none; flex-wrap: wrap; }
+.imp-filtri .seg .n { opacity: .7; font-weight: 600; }
+.imp-filtri select { max-width: 260px; }
+.imp-filtri input { width: 200px; }
 .imp-griglia { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
 .imp-card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; }
 .imp-card.on { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
 .imp-card .fig { position: relative; aspect-ratio: 1; background: var(--surface-2); cursor: pointer; }
 .imp-card .fig img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .imp-card .fig input { position: absolute; top: 8px; left: 8px; width: 18px; height: 18px; }
-.imp-card .dop { position: absolute; right: 8px; top: 8px; background: var(--amber-soft); color: var(--amber); font-size: .72rem; font-weight: 700; border-radius: 99px; padding: 3px 8px; display: flex; gap: 6px; align-items: center; }
+.imp-card .dop:hover { outline: 2px solid var(--amber); }
+.imp-card .dop.g-uguale { background: var(--accent-soft); color: var(--accent); }
+.imp-card .dop.g-diverso { background: var(--surface); color: var(--muted); }
+.col-var { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; font-size: .8rem; }
+.col-var button { display: inline-flex; flex-direction: column; gap: 3px; border: 1px solid var(--line); background: var(--surface); border-radius: 9px; padding: 5px 8px; cursor: pointer; font: inherit; font-size: .75rem; color: var(--muted); text-align: left; max-width: 220px; }
+.col-var button.on { border-color: var(--accent); color: var(--text); box-shadow: 0 0 0 2px var(--accent-soft); font-weight: 700; }
+.col-var button span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.col-var .sw { display: flex; gap: 2px; flex-wrap: wrap; }
+.col-var .sw i { width: 11px; height: 11px; border-radius: 3px; border: 1px solid #0002; }
+.dlg.dopc { max-width: 1180px; }
+.dop-griglia { display: grid; grid-template-columns: 1fr minmax(0, 1.25fr) minmax(0, 1.25fr) 1fr; gap: 14px; align-items: start; }
+.dop-griglia .lato { display: flex; flex-direction: column; gap: 8px; font-size: .85rem; min-width: 0; }
+.dop-griglia .lato.dx { text-align: right; align-items: flex-end; }
+.dop-griglia .tit { font-weight: 800; font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.dop-griglia .v { font-weight: 700; overflow-wrap: anywhere; }
+.dop-griglia .k { color: var(--muted); font-size: .75rem; }
+.dop-griglia .diff { color: var(--amber); }
+.dop-griglia .ok { color: var(--accent); }
+.dop-griglia figure { margin: 0; background: var(--surface-2); border-radius: 12px; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.dop-griglia figure img { width: 100%; height: 100%; object-fit: contain; }
+.dop-griglia .sw { display: flex; flex-wrap: wrap; gap: 3px; }
+.dop-griglia .lato.dx .sw { justify-content: flex-end; }
+.dop-esito { border-radius: 10px; padding: 9px 14px; font-weight: 700; font-size: .9rem; }
+.dop-esito.uguale { background: var(--accent-soft); color: var(--accent); }
+.dop-esito.colori { background: var(--amber-soft); color: var(--amber); }
+.dop-esito.diverso { background: var(--surface-2); color: var(--muted); }
+.dop-griglia .sw i { width: 14px; height: 14px; border-radius: 4px; border: 1px solid #0002; display: inline-block; }
+@media (max-width: 900px) { .dop-griglia { grid-template-columns: 1fr 1fr; } .dop-griglia .lato.dx { text-align: left; align-items: flex-start; } }
+.imp-card .dop { cursor: pointer; position: absolute; right: 8px; top: 8px; background: var(--amber-soft); color: var(--amber); font-size: .72rem; font-weight: 700; border-radius: 99px; padding: 3px 8px; display: flex; gap: 6px; align-items: center; }
 .imp-card .dop img { width: 34px; height: 34px; border-radius: 6px; background: #fff; }
 .imp-card .corpo { padding: 8px 10px 10px; display: flex; flex-direction: column; gap: 6px; font-size: .8rem; }
 .imp-card .corpo input, .imp-card .corpo select { width: 100%; box-sizing: border-box; min-width: 0; }
@@ -540,6 +582,12 @@ input[type=range] { width: 100%; accent-color: var(--accent); margin: 14px 0 2px
 </style>
 </head>
 <body>
+<div class="agg-card" id="aggCard" hidden>
+  <b id="aggCardTit"></b>
+  <span class="hint" id="aggCardTxt">Aggiornare richiede un minuto: OpenHoop si riavvia da solo. I tuoi disegni e le impostazioni restano come sono.</span>
+  <pre class="agg-note" id="aggCardNote" hidden></pre>
+  <div class="riga"><button class="btn ghost" id="aggDopo">Più tardi</button><button class="btn" id="aggNovita">Novità</button><button class="btn pri" id="aggVai">Aggiorna</button></div>
+</div>
 <div class="lavoro-bar" id="lavoroBar" hidden><span class="giro"></span><span id="lavoroTxt"></span></div>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
@@ -697,6 +745,24 @@ input[type=range] { width: 100%; accent-color: var(--accent); margin: 14px 0 2px
         <div class="barra"><i id="setBarra"></i></div>
         <span class="hint" id="setLavMsg"></span>
       </div>
+      <div class="set-passo" id="setSistema" hidden><div class="num">6</div><div class="corpo">
+        <b>Sistema la libreria</b>
+        <span class="hint">Corregge i disegni che hai già, senza rifare il riordino né l'importazione. Prima guardi l'anteprima: non cambia niente finché non premi «Applica», e puoi sempre annullare.</span>
+        <label class="check"><input type="checkbox" class="sisPasso" value="allegati" checked> <span><b>Istruzioni e allegati</b>: PDF, tabelle dei colori e istruzioni rimasti nelle cartelle e negli zip d'origine, messi accanto ai disegni</span></label>
+        <label class="check"><input type="checkbox" class="sisPasso" value="nomi" checked> <span><b>Nomi poco chiari</b>: «4», «45 inch 10», «rose_dst» diventano «Baby Dinosaur 4», «Christmas-Cat 45 inch 10», «rose»</span></label>
+        <label class="check"><input type="checkbox" class="sisPasso" value="temi" checked> <span><b>Temi e raccolte</b>: i «VARIE» nel tema giusto guardando l'immagine; le raccolte divise per misura («… 5x7», «… 6x10») unite in una. I temi che hai scelto tu non si toccano.</span></label>
+        <label class="check"><input type="checkbox" class="sisPasso" value="doppioni" checked> <span><b>Doppioni</b>: lo stesso disegno presente due volte; le copie vanno nel cestino di OpenHoop (recuperabili)</span></label>
+        <div class="imp-riga"><button class="btn" id="sisAnteprima">Anteprima</button><button class="btn pri" id="sisApplica" hidden>Applica</button><button class="btn" id="sisAnnulla" hidden>Annulla l'ultima sistemazione</button></div>
+        <div id="sisRapporto" class="sis-rapporto"></div>
+      </div></div>
+      <div class="set-passo" id="setAgg"><div class="num">7</div><div class="corpo">
+        <b>Aggiornamenti</b>
+        <span class="hint" id="aggVers"></span>
+        <label class="check"><input type="checkbox" id="aggAuto"> <span>Controlla se c'è una versione nuova quando apro OpenHoop (legge solo la pagina pubblica delle versioni su GitHub, non invia niente di tuo)</span></label>
+        <div class="imp-riga"><button class="btn" id="aggOra">Controlla ora</button><button class="btn pri" id="aggInst" hidden>Aggiorna</button><button class="btn" id="aggIndietro" hidden>Torna alla versione precedente</button></div>
+        <div class="hint" id="aggMsg"></div>
+        <pre class="agg-note" id="aggNote" hidden></pre>
+      </div></div>
     </div>
   </section>
   <div class="modal" id="mCart" hidden>
@@ -742,6 +808,11 @@ input[type=range] { width: 100%; accent-color: var(--accent); margin: 14px 0 2px
         <span class="grow"></span>
         <button class="btn" id="impScarta"><svg class="i"><use href="#i-trash"/></svg>Scarta</button>
         <button class="btn pri" id="impConferma"><svg class="i"><use href="#i-check"/></svg>Metti in libreria</button>
+        <div class="imp-filtri">
+          <div class="seg" id="impFiltro"></div>
+          <select id="impFonte" title="Da dove vengono (zip o cartella)"></select>
+          <input id="impCerca" type="search" placeholder="cerca nel nome…" spellcheck="false">
+        </div>
       </div>
       <datalist id="impRaccList"></datalist>
       <div class="imp-griglia" id="impGriglia"></div>
@@ -972,6 +1043,19 @@ input[type=range] { width: 100%; accent-color: var(--accent); margin: 14px 0 2px
   <footer><button class="btn" id="sCopia">Copia la lista</button><button class="btn pri" data-chiudi="mSpesa">Fatto</button></footer>
 </div></div>
 
+<!-- confronto con il doppione (Importa disegni) -->
+<div class="modal" id="mDop" hidden><div class="dlg dopc">
+  <header><h3>È lo stesso disegno?</h3><span class="hint" id="dopPos"></span>
+    <button class="btn ico ghost" id="dopPrec" title="Doppione precedente (←)"><svg class="i"><use href="#i-left"/></svg></button>
+    <button class="btn ico ghost" id="dopSucc" title="Doppione successivo (→)"><svg class="i"><use href="#i-right"/></svg></button>
+    <button class="btn ico ghost" data-chiudi="mDop"><svg class="i"><use href="#i-x"/></svg></button></header>
+  <div class="body"><div class="dop-esito" id="dopEsito" hidden></div><div class="dop-griglia" id="dopCorpo"></div></div>
+  <footer><span class="hint" style="margin-right:auto">Scarta = non lo importo (ce l'ho già) · Importa = lo metto comunque</span>
+    <button class="btn" id="dopTieni"><svg class="i"><use href="#i-check"/></svg>Importa lo stesso</button>
+    <button class="btn" id="dopColori" hidden title="Il disegno che hai già prende i colori di questo; questo non viene importato"><svg class="i"><use href="#i-spool"/></svg>Scarta ma prendi i suoi colori</button>
+    <button class="btn pri" id="dopScarta"><svg class="i"><use href="#i-trash"/></svg>Scarta: è uguale</button></footer>
+</div></div>
+
 <!-- nome raccolta -->
 <div class="modal" id="mRacc" hidden><div class="dlg" style="max-width:440px">
   <header><h3 id="rTitolo">Aggiungi a una raccolta</h3></header>
@@ -1194,29 +1278,71 @@ function disegnaTemi() {
 }
 // lavori in sottofondo (riordino, analisi delle immagini): barra in alto finché durano, poi la pagina si ricarica
 // da sola quando il server si è riavviato (così nessuno mette in libreria o esporta mentre si riavvia)
+const GL = { t: null, lib: false };                 // timer della barra in alto; «Metti in libreria» in corso
 async function guardaLavoro() {
+  // una richiesta andata male non vuol dire «riavvio» (con un'importazione grande il server risponde lento):
+  // si riprova 3 volte, e la pagina si ricarica solo se il server si è riavviato davvero (orario d'avvio cambiato)
   let s = null;
-  try { s = await (await fetch("/api/setup")).json(); } catch (e) { }
+  for (let k = 0; k < 3 && s === null; k++) {
+    try { s = await (await fetch("/api/setup")).json(); } catch (e) { await new Promise(ok => setTimeout(ok, 2000)); }
+  }
   const L = s && s.lavoro, bar = $("lavoroBar");
   if (s === null || (L && L.riavvio)) {
     bar.hidden = false;
     $("lavoroTxt").innerHTML = t("OpenHoop si sta riavviando, un momento…");
     for (let k = 0; k < 90; k++) {
       await new Promise(ok => setTimeout(ok, 1500));
-      try { const r = await (await fetch("/api/setup")).json(); if (!r.lavoro || !r.lavoro.riavvio) { location.reload(); return; } } catch (e) { }
+      try {
+        const r = await (await fetch("/api/setup")).json();
+        if (!r.lavoro || !r.lavoro.riavvio) {
+          if (r.avvio && r.avvio !== AVV) { location.reload(); return; }
+          break;                                         // era solo lento: niente ricarica
+        }
+      } catch (e) { }
     }
+    bar.hidden = true;
+    clearTimeout(GL.t);
+    GL.t = setTimeout(guardaLavoro, 2500);
+    return;
+  }
+  const I = s && s.importa;
+  if (I) {
+    $("nImp").textContent = I.attesa || "";
+    if (GL.lib && !I.libreria.attivo) {                 // «Metti in libreria» appena finito
+      toast(t("{} disegni messi in libreria").replace("{}", (I.libreria.messi ?? I.libreria.fatti).toLocaleString(LOC)));
+      if (!$("vImp").hidden) impElenco();
+      impContatori();
+    }
+    GL.lib = I.libreria.attivo;
   }
   if (L && L.tipo && !L.finito && !L.errore) {
     const pc = L.totale ? Math.round(100 * L.fatti / L.totale) : 0;
     const cosa = L.fase === "finale" ? t("Sistemo temi e misure dei disegni…")
       : L.tipo === "riordino" ? `${t("Riordino in corso…")} ${L.fatti || 0}/${L.totale || "?"}`
+      : L.tipo === "sistema" ? `${L.modo === "anteprima" ? t("Preparo l'anteprima della sistemazione…") : L.modo === "annulla" ? t("Annullo l'ultima sistemazione…") : t("Sistemo la libreria…")} ${L.totale ? `${L.fatti}/${L.totale}` : ""} <small>${esc((L.msg || "").replace(/^\s*\d+\/\d+\s*/, ""))}</small>`
       : `${t("Preparo la ricerca per significato…")} ${pc}%`;
-    $("lavoroTxt").innerHTML = `${cosa} <small>${t("Al termine OpenHoop si ricarica da solo: aspetta prima di mettere in libreria, importare o esportare.")}</small>`;
+    $("lavoroTxt").innerHTML = L.tipo === "sistema" && L.modo === "anteprima" ? cosa
+      : `${cosa} <small>${t("Al termine OpenHoop si ricarica da solo: aspetta prima di mettere in libreria, importare o esportare.")}</small>`;
+    bar.hidden = false;
+  } else if (I && (I.analisi.attivo || I.libreria.attivo)) {
+    // importazione: la barra si riempie mentre analizza, si svuota mentre mette in libreria
+    const A = I.analisi, B = I.libreria;
+    let txt, pc;
+    if (B.attivo) {
+      pc = B.totale ? 100 - 100 * B.fatti / B.totale : 0;
+      txt = `${t("Metto in libreria…")} ${B.fatti.toLocaleString(LOC)} / ${B.totale.toLocaleString(LOC)}`;
+    } else {
+      pc = A.totale ? 100 * A.fatti / A.totale : 0;
+      txt = A.totale ? `${t("Analizzo i disegni importati…")} ${A.fatti.toLocaleString(LOC)} / ${A.totale.toLocaleString(LOC)}` : t("Leggo i file da importare…");
+    }
+    $("lavoroTxt").innerHTML = `${txt} <span class="prog"><i style="width:${pc.toFixed(1)}%"></i></span> <small>${t("puoi continuare a usare OpenHoop")}</small>`;
     bar.hidden = false;
   } else bar.hidden = true;
   document.body.style.paddingTop = bar.hidden ? "" : bar.offsetHeight + "px";   // la barra non copre la pagina
-  setTimeout(guardaLavoro, bar.hidden ? 8000 : 2500);
+  clearTimeout(GL.t);
+  GL.t = setTimeout(guardaLavoro, bar.hidden ? 8000 : 2000);
 }
+function guardaOra() { clearTimeout(GL.t); guardaLavoro(); }
 async function init() {
   INFO = await api("/api/info");
   // OpenHoop: archivio non ancora fatto -> pagina del primo avvio al posto del catalogo
@@ -1236,6 +1362,7 @@ async function init() {
   if (location.hash === "#impostazioni") { history.replaceState(null, "", location.pathname); mostraSet(true); }
   guardaLavoro();
   const h = location.hash.match(/^#d(\d+)(?:-(\d+))?$/);
+  if (!location.hash) ({ imp: () => mostraImp(true), dig: () => mostraDig(true), set: () => mostraSet(true) }[VISTA.leggi()] || (() => {}))();
   if (h) await dettaglio(+h[1]);
   if (h && h[2]) { document.querySelector('#dTabs [data-t="mis"]').click(); misura(+h[2]); }
 }
@@ -1275,9 +1402,11 @@ async function carica(top = true) {
   if (autore) t += `<span>autore: ${esc(autore)}</span><a id="annullaAut">Tutti gli autori</a>`;
   if (serie) t += `<span>serie di «${esc(serieNome)}»</span><a id="annullaSerie">Annulla «serie»</a>`;
   if (r.misura) t += r.misura[1] == null ? `<span>lato lungo circa ${n1(r.misura[0])} mm (±${r.tol}%)</span>` : `<span>circa ${n1(r.misura[0])} × ${n1(r.misura[1])} mm (±${r.tol}%)</span>`;
+  if (r.fuori_tel) t += `<a id="mostraFuoriTel">${(r.fuori_tel === 1 ? window.t("1 non entra nei tuoi telai: mostralo") : window.t("{} non entrano nei tuoi telai: mostrali").replace("{}", r.fuori_tel))}</a>`;
   if (r.vaghi) t += `<a id="mostraVaghi">Mostra anche ${r.vaghi.toLocaleString(LOC)} somiglianze vaghe</a>`;
   if (r.clip && r.clip_n < INFO.tot) t += `<span>analisi immagini ${Math.round(100 * r.clip_n / INFO.tot)}%</span>`;
   $("info").innerHTML = t;
+  if ($("mostraFuoriTel")) $("mostraFuoriTel").onclick = () => { $("fTelaio").value = "a"; segnaTel(); pag = 0; carica(); };
   if ($("mostraVaghi")) $("mostraVaghi").onclick = () => { vaghi = true; pag = 0; carica(); };
   if ($("annullaSim")) $("annullaSim").onclick = () => { simili = ""; pag = 0; carica(); };
   if ($("annullaAut")) $("annullaAut").onclick = () => filtraAutore("");
@@ -1286,7 +1415,7 @@ async function carica(top = true) {
   $("prev").disabled = pag === 0; $("next").disabled = (pag + 1) * PER >= tot;
   $("g").innerHTML = r.items.map(v => `
     <div class="card ${SEL.has(v.i) ? "scelta" : ""}" draggable="true" data-i="${v.i}" data-n="${encodeURIComponent(v.nome)}">
-      <div class="ph"><img loading="lazy" draggable="false" src="/img/${v.i}.webp?v=${AVV}" alt="">${v.foto ? `<img class="fotoric" loading="lazy" draggable="false" src="/diario/${encodeURIComponent(v.foto)}" alt="Il ricamo fatto">` : ""}
+      <div class="ph"><img loading="lazy" draggable="false" src="/img/${v.i}.webp?v=${AVV}${COLV[v.i] ? "&c=" + COLV[v.i] : ""}" alt="">${v.foto ? `<img class="fotoric" loading="lazy" draggable="false" src="/diario/${encodeURIComponent(v.foto)}" alt="Il ricamo fatto">` : ""}
         <span class="tick">${ico("check")}</span>
         <button class="fav ${v.pref ? "on" : ""}" title="${v.pref ? "Togli dai preferiti" : "Aggiungi ai preferiti"}">${ico("star")}</button>
         <button class="open" title="Apri il dettaglio">${ico("eye")}</button>
@@ -1410,12 +1539,12 @@ async function dettaglio(i) {
   $("dTagli").textContent = (taglia ? cur.salti : cur.tagli) ?? "?";
   $("dTagliBox").classList.toggle("warn", !taglia && (cur.tagli ?? 0) > 15);
   $("dExtra").innerHTML = `${cur.punti.toLocaleString(LOC)} ${t("punti")}${cur.salti != null ? ` · ${cur.salti} ${t("salti")}` : ""}${cur.fmt !== ".pes" ? ` · ${t("convertito da")} ${cur.fmt}` : ""}` + (cur.tel >= 0 ? ` · ${t("telaio più piccolo")} <b>${fT(INFO.telai[cur.tel])}</b>` : ` · <span class="tag no">Non entra in nessun telaio</span>`);
-  mostraLinkPatch();
-  $("dImg").src = "/img/" + i + ".webp?v=" + AVV;
+  mostraLinkPatch(); mostraAllegati(); mostraColVar();
+  $("dImg").src = "/img/" + i + ".webp?v=" + AVV + (COLV[i] ? "&c=" + COLV[i] : "");
   $("dCar").textContent = "Carico l'alta definizione…";
   const big = new Image();
   big.onload = () => { if (cur && cur.i === i && cur.scala === 100) { $("dImg").src = big.src; $("dCar").textContent = "Alta definizione"; } };
-  big.src = "/api/anteprima?v=" + AVV + "&i=" + i;
+  big.src = "/api/anteprima?v=" + AVV + "&i=" + i + (COLV[i] ? "&c=" + COLV[i] : "");
   disegnaFili(); disegnaRacc(); disegnaDiario(); aggiornaDet();
   cur.scala = SCALE[i] || 100; $("mRic").checked = !NORIC.has(i); misura(cur.scala, cur.scala !== 100);
   apri("mDet");
@@ -1872,6 +2001,134 @@ function mostraLinkPatch() {
   el.hidden = !el.innerHTML;
 }
 document.addEventListener("click", e => { const l = e.target.closest("#dPatchLink .dlink"); if (l) dettaglio(+l.dataset.i); });
+// scheda: istruzioni, PDF, tabelle dei colori nella cartella della raccolta (importazione / «Sistema la libreria»)
+// versioni dei colori (da «Scarta ma prendi i suoi colori»): si sceglie quale usare, il file si riscrive
+const COLV = {};                                            // disegno -> istante dell'ultimo cambio (immagini nuove)
+function mostraColVar() {
+  let el = $("dColVar");
+  if (!el) { el = document.createElement("div"); el.id = "dColVar"; el.className = "col-var"; $("dExtra").after(el); }
+  const cv = cur.colori_var;
+  el.hidden = !cv;
+  if (!cv) { el.innerHTML = ""; return; }
+  el.innerHTML = `<b>${t("Colori:")}</b>` + cv.var.map((v, k) => `<button data-k="${k}" class="${k === cv.attiva ? "on" : ""}" title="${esc(v.nome)}">
+    <span>${esc(v.nome === "Originali" ? t("Originali") : v.nome)}</span><span class="sw">${v.seq.slice(0, 24).map(h => `<i style="background:${esc(h)}"></i>`).join("")}</span></button>`).join("");
+}
+document.addEventListener("click", async e => {
+  const bt = e.target.closest("#dColVar button"); if (!bt || bt.classList.contains("on")) return;
+  const i = cur.i;
+  document.querySelectorAll("#dColVar button").forEach(x => x.disabled = true);
+  try { await api("/api/colori/scegli", { i, k: +bt.dataset.k }); }
+  catch (err) { toast(t("Non riuscito:") + " " + err.message); document.querySelectorAll("#dColVar button").forEach(x => x.disabled = false); return; }
+  COLV[i] = Date.now();
+  document.querySelectorAll(`img[src^="/img/${i}.webp"]`).forEach(im => im.src = `/img/${i}.webp?v=${AVV}&c=${COLV[i]}`);
+  if (cur && cur.i === i) dettaglio(i);
+});
+function mostraAllegati() {
+  let el = $("dAllegati");
+  if (!el) { el = document.createElement("div"); el.id = "dAllegati"; el.className = "hint"; el.style.marginTop = "4px"; ($("dPatchLink") || $("dExtra")).after(el); }
+  const a = cur.allegati || [];
+  el.innerHTML = a.length ? `${t("Istruzioni e allegati:")} ` + a.map(f => `<span class="dlink" data-f="${esc(f)}" title="${t("Apri")}">${esc(f)}</span>`).join(", ") : "";
+  el.hidden = !a.length;
+}
+document.addEventListener("click", e => {
+  const l = e.target.closest("#dAllegati .dlink");
+  if (l) api(`/api/allegato?i=${cur.i}&f=${encodeURIComponent(l.dataset.f)}`).catch(err => toast(err.message));
+});
+
+// ---------------- aggiornamenti: avviso in basso a destra + Impostazioni §7 ----------------
+const AGGS = { info: null, t: null };
+function aggMostra(r) {
+  AGGS.info = r;
+  const nuova = r.nuova;
+  let dopo = ""; try { dopo = localStorage.getItem("oh_agg_dopo") || ""; } catch (e) { }
+  $("aggCard").hidden = !nuova || dopo === nuova || r.attivo;
+  if (nuova) {
+    $("aggCardTit").textContent = t("È disponibile OpenHoop {}").replace("{}", nuova);
+    $("aggCardNote").textContent = r.note || "";
+  }
+  $("aggVers").textContent = t("Versione installata:") + " " + r.attuale + (nuova ? " · " + t("disponibile:") + " " + nuova : "");
+  $("aggAuto").checked = !!r.auto;
+  $("aggInst").hidden = !nuova || r.attivo;
+  $("aggInst").textContent = nuova ? t("Aggiorna a {}").replace("{}", nuova) : "";
+  $("aggIndietro").hidden = !r.precedente || r.attivo;
+  if (r.precedente) $("aggIndietro").textContent = t("Torna alla versione {}").replace("{}", r.precedente.da);
+  $("aggNote").hidden = !nuova || !r.note; $("aggNote").textContent = r.note || "";
+  $("aggMsg").innerHTML = r.attivo ? `<b>${esc(r.stato || t("Aggiorno…"))}</b>` :
+    r.errore ? `<span style="color:var(--danger)">${t("Non riuscito:")} ${esc(r.errore)}</span>` : "";
+  clearTimeout(AGGS.t);
+  if (r.attivo) AGGS.t = setTimeout(aggCarica, 1500);      // finito: il server si riavvia e la pagina si ricarica
+}
+async function aggCarica() { try { aggMostra(await api("/api/aggiornamento")); } catch (e) { clearTimeout(AGGS.t); AGGS.t = setTimeout(aggCarica, 3000); } }
+async function aggFai(azione, valore) {
+  try { aggMostra(await api("/api/aggiornamento", { azione, valore })); if (azione !== "auto" && azione !== "controlla") guardaOra(); }
+  catch (e) { toast(t("Non riuscito:") + " " + e.message); }
+}
+$("aggDopo").onclick = () => { try { localStorage.setItem("oh_agg_dopo", AGGS.info.nuova); } catch (e) { } $("aggCard").hidden = true; };
+$("aggNovita").onclick = () => { $("aggCardNote").hidden = !$("aggCardNote").hidden; };
+$("aggVai").onclick = () => { $("aggCard").hidden = true; mostraSet(true); aggFai("installa"); setTimeout(() => $("setAgg").scrollIntoView({ block: "center" }), 300); };
+$("aggInst").onclick = () => aggFai("installa");
+$("aggIndietro").onclick = () => { if (confirm(t("Tornare alla versione precedente? OpenHoop si riavvia."))) aggFai("ripristina"); };
+$("aggOra").onclick = async () => { $("aggMsg").textContent = t("Controllo…"); await aggFai("controlla"); if (AGGS.info && !AGGS.info.nuova && !AGGS.info.errore) $("aggMsg").textContent = t("Hai già l'ultima versione."); };
+$("aggAuto").onchange = () => aggFai("auto", $("aggAuto").checked);
+setTimeout(aggCarica, 25000);                              // il server controlla ~20 s dopo l'avvio
+
+// ---------------- Impostazioni → Sistema la libreria ----------------
+const SIS = { passi: [] };
+const SIS_RIGHE = [["allegati", "allegati da aggiungere accanto ai disegni", " ← ", "allegati aggiunti accanto ai disegni"],
+  ["nomi", "nomi da rendere chiari", " → ", "nomi resi chiari"],
+  ["temi", "disegni di VARIE da mettere nel tema giusto", " → ", "disegni di VARIE messi nel tema giusto"],
+  ["raccolte", "disegni in raccolte divise per misura da unire", " → ", "disegni in raccolte divise per misura uniti"],
+  ["doppioni", "doppioni da mettere nel cestino", " = ", "doppioni messi nel cestino"]];
+const sisCorto = s => { const p = String(s).split(/[\\/›]/).map(x => x.trim()).filter(Boolean); return p.length > 3 ? "…\\" + p.slice(-3).join("\\") : s; };
+async function sisCarica() { sisMostra(await api("/api/sistema").catch(() => ({}))); }
+function sisMostra(r) {
+  $("sisAnnulla").hidden = !r.annullabile;
+  if (r.annullabile) $("sisAnnulla").title = t("Sistemazione del") + " " + r.annullabile;
+  if (!r.contati) { $("sisRapporto").innerHTML = ""; $("sisApplica").hidden = true; return; }
+  const ant = r.modo === "anteprima", c = r.contati;
+  SIS.passi = r.passi || [];
+  let h = `<b>${ant ? t("Anteprima del") : t("Sistemazione applicata il")} ${esc(r.data)}</b>`;
+  for (const [k, lab, sep, fatto] of SIS_RIGHE) {
+    if (!SIS.passi.includes(k === "raccolte" ? "temi" : k)) continue;
+    const es = (r.esempi || {})[k] || [];
+    h += `<details><summary>${(c[k] || 0).toLocaleString(LOC)} ${t(ant ? lab : fatto)}</summary>` +
+      es.map(e => `<div class="sis-es" title="${esc(e[1] || "")}">${esc(e[0])}${e[1] ? sep + esc(k === "allegati" ? sisCorto(e[1]) : e[1]) : ""}</div>`).join("") +
+      (c[k] > es.length ? `<div class="sis-es">… ${t("e altri")} ${(c[k] - es.length).toLocaleString(LOC)}</div>` : "") + `</details>`;
+  }
+  if (r.errori) {
+    const ee = r.errori_esempi || [];
+    h += `<details><summary style="color:var(--danger)">${r.errori.toLocaleString(LOC)} ${t("errori: saltati senza fermarsi")}</summary>` +
+      ee.map(e => `<div class="sis-es" title="${esc(e[1])}">${esc(sisCorto(e[1]))} — ${esc(e[2])}</div>`).join("") +
+      (r.errori > ee.length ? `<div class="sis-es">… ${t("e altri")} ${(r.errori - ee.length).toLocaleString(LOC)}</div>` : "") + `</details>`;
+  }
+  if (!ant && r.dal_piano) h += `<div class="hint">${t("Applicato l'elenco dell'anteprima.")}</div>`;
+  if (ant) h += `<div class="hint">${t("«Applica» rifà esattamente questo elenco (se la libreria non cambia nel frattempo).")}</div>`;
+  $("sisRapporto").innerHTML = h;
+  $("sisApplica").hidden = !(ant && Object.values(c).some(x => x));
+}
+async function sisAvvia(modo) {
+  const passi = modo === "applica" ? SIS.passi : [...document.querySelectorAll(".sisPasso:checked")].map(x => x.value);
+  if (modo === "applica" && !confirm(t("Applico le correzioni dell'anteprima? Prima tengo una copia del catalogo: con «Annulla l'ultima sistemazione» torni indietro. Alla fine OpenHoop si riavvia."))) return;
+  if (modo === "annulla" && !confirm(t("Rimetto la libreria com'era prima dell'ultima sistemazione? Quello che hai cambiato dopo (preferiti, raccolte, importazioni) andrebbe perso."))) return;
+  try {
+    await api("/api/sistema", { modo, passi });
+    $("sisApplica").hidden = true;
+    guardaOra();
+    if (modo !== "anteprima") return;                  // applica/annulla: alla fine OpenHoop si riavvia e ricarica
+    $("sisRapporto").innerHTML = `<span class="hint">${t("Preparo l'anteprima: con un archivio grande ci vogliono alcuni minuti…")}</span>`;
+    for (;;) {
+      await new Promise(ok => setTimeout(ok, 2500));
+      const s = await api("/api/setup").catch(() => null), L = s && s.lavoro;
+      if (L && L.tipo === "sistema" && L.finito) {
+        if (L.errore) { $("sisRapporto").innerHTML = `<span style="color:var(--danger)">${t("Anteprima non riuscita:")} ${esc(L.errore)}</span>`; return; }
+        sisCarica(); return;
+      }
+    }
+  } catch (e) { toast(e.message); }
+}
+$("sisAnteprima").onclick = () => sisAvvia("anteprima");
+$("sisApplica").onclick = () => sisAvvia("applica");
+$("sisAnnulla").onclick = () => sisAvvia("annulla");
 $("pSalva").onclick = async () => {
   $("pMsg").innerHTML = `<span class="hint">Salvo…</span>`;
   try {
@@ -1886,8 +2143,15 @@ $("pSalva").onclick = async () => {
 // ---------------- digitalizzatore: pagina a parte, le bozze restano in attesa finché non le confermi ----------------
 let DIG = { bozze: [], cur: null, vista: "ricamo", destOk: false, ver: 0, scelta: null };
 const PUNTO_IT = { fill: "riempimento", satin: "satin", satin_pieno: "satin pieno", filza3: "filza tripla" };
+// sezione aperta: dopo F5 si riapre la stessa (sessionStorage: vale per questa scheda del browser)
+const VISTA = {
+  salva(v) { try { sessionStorage.setItem("oh_vista", v); } catch (e) { } },
+  leggi() { try { return sessionStorage.getItem("oh_vista") || ""; } catch (e) { return ""; } },
+  get(k) { try { return JSON.parse(sessionStorage.getItem(k) || "null"); } catch (e) { return null; } },
+  set(k, v) { try { sessionStorage.setItem(k, JSON.stringify(v)); } catch (e) { } },
+};
 function mostraDig(si) {
-  if (si) { mostraImp(false); mostraSet(false); }
+  if (si) { mostraImp(false); mostraSet(false); VISTA.salva("dig"); }
   $("vDig").hidden = !si; $("main").hidden = si || !$("vImp").hidden || !$("vSet").hidden;
   $("bDig").classList.toggle("on", si);
   if (si) { digElenco(); digDest(); chiudiMenu(); }
@@ -1895,7 +2159,7 @@ function mostraDig(si) {
 $("bDig").onclick = () => mostraDig(true);
 $("bMenuDig").onclick = () => $("side").classList.toggle("open");
 // qualsiasi voce della libreria/temi/raccolte/autori/telai riporta al catalogo
-["navLib", "navTemi", "navRacc", "navAut", "navTel"].forEach(id => $(id) && $(id).addEventListener("click", e => { if (e.target.closest("button")) { mostraDig(false); mostraImp(false); mostraSet(false); } }, true));
+["navLib", "navTemi", "navRacc", "navAut", "navTel"].forEach(id => $(id) && $(id).addEventListener("click", e => { if (e.target.closest("button")) { mostraDig(false); mostraImp(false); mostraSet(false); VISTA.salva(""); } }, true));
 
 // ---------------- OpenHoop: primo avvio e impostazioni ----------------
 const SET = { info: null, sorgenti: [], cart: null, perArchivio: false, timer: null };
@@ -1903,7 +2167,7 @@ function mostraSet(si) {
   if (si) { $("vDig").hidden = true; $("vImp").hidden = true; $("bDig").classList.remove("on"); $("bImp").classList.remove("on"); }
   $("vSet").hidden = !si; $("main").hidden = si || !$("vDig").hidden || !$("vImp").hidden;
   $("bSet").classList.toggle("on", si);
-  if (si) { setCarica(); chiudiMenu(); }
+  if (si) { setCarica(); chiudiMenu(); VISTA.salva("set"); }
 }
 $("bSet").onclick = () => mostraSet(true);
 $("bMenuSet").onclick = () => $("side").classList.toggle("open");
@@ -1913,6 +2177,8 @@ async function setCarica() {
   $("setTit").textContent = primo ? "Ti diamo il benvenuto in OpenHoop" : "Impostazioni";
   $("setSotto").hidden = !primo;
   $("setVai").hidden = !primo; $("setSalva").hidden = primo; $("setRifai").hidden = primo; $("setCestino").hidden = primo;
+  $("setSistema").hidden = primo; if (!primo) sisCarica();
+  aggCarica();
   $("setLingua").value = c.lingua || "it";
   SET.sorgenti = [...(c.sorgenti || [])];
   setSorgenti();
@@ -2033,12 +2299,51 @@ $("setAggSorg").onclick = () => { SET.perArchivio = false; $("mCart").hidden = f
 $("setSfoglia").onclick = () => { SET.perArchivio = true; $("mCart").hidden = false; cartApri(""); };
 
 // ---------------- importa disegni: file trascinati, cartella, link -> in attesa -> «Metti in libreria» ----------------
-const IMP = { attesa: [], temi: [], sel: new Set(), modifiche: {}, timer: null, download: "" };
+const IMP = { attesa: [], temi: [], sel: new Set(), modifiche: {}, timer: null, download: "", filtro: "", fonte: "", cerca: "",
+  ...(VISTA.get("oh_imp_filtri") || {}), torna: VISTA.get("oh_imp_pos") };
+const impGrande = b => !((typeof INFO !== "undefined" && INFO && INFO.telai) || []).some(t => Math.min(b.larg, b.alt) <= t[0] && Math.max(b.larg, b.alt) <= t[1]);
+// doppione: stesse forme? stessi colori? (c = {w, h, punti, col, seq} del disegno nel catalogo)
+function dopGiudizio(b, c) {
+  if (!c || c.w == null) return null;
+  const rgb = h => [1, 3, 5].map(k => parseInt(String(h).slice(k, k + 2), 16) || 0);
+  const vicini = (a, z) => { const p = rgb(a), q = rgb(z); return Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]) <= 80; };
+  const forme = Math.abs(b.larg - c.w) <= 1 && Math.abs(b.alt - c.h) <= 1 && Math.abs(b.punti - c.punti) <= c.punti * 0.03;
+  const sa = b.sequenza || [], sz = c.seq || [];
+  const col = b.colori === c.col && sa.length === sz.length && sa.every((h, k) => vicini(h, sz[k]));
+  return forme ? (col ? "uguale" : "colori") : "diverso";
+}
+const impAltroAtt = b => b.doppio_di ? IMP.attesa.find(x => x.id === b.doppio_di) : null;
+const impComeCat = a => a && { w: a.larg, h: a.alt, punti: a.punti, col: a.colori, seq: a.sequenza };   // in attesa -> come il catalogo
+const IMP_FILTRI = [["", "Tutti", () => true], ["nuovi", "Nuovi", b => !b.doppione && !b.doppio_di], ["doppi", "Già nel catalogo", b => !!b.doppione],
+  ["attesa", "Uguali a un altro in attesa", b => !!b.doppio_di],
+  ["altricol", "Già nel catalogo ma con altri colori", b => dopGiudizio(b, b.doppione) === "colori"],
+  ["allegati", "Con allegati", b => (b.allegati || []).length > 0], ["grandi", "Troppo grandi per i miei telai", impGrande],
+  ["avvisi", "Con avvisi", b => !!b.avviso]];
+function impVisibili() {
+  const f = (IMP_FILTRI.find(x => x[0] === IMP.filtro) || IMP_FILTRI[0])[2], q = IMP.cerca.trim().toLowerCase();
+  return IMP.attesa.filter(b => f(b) && (!IMP.fonte || (b.fonte || "") === IMP.fonte) &&
+    (!q || String(impVal(b, "nome")).toLowerCase().includes(q) || String(b.origine || "").toLowerCase().includes(q)));
+}
+function impFiltri() {
+  const v = IMP.attesa;
+  if (!IMP_FILTRI.some(x => x[0] === IMP.filtro && (x[0] === "" || v.some(x[2])))) IMP.filtro = "";
+  $("impFiltro").innerHTML = IMP_FILTRI.map(([k, lab, f]) => { const n = v.filter(f).length;
+    return k && !n ? "" : `<button data-f="${k}" class="${IMP.filtro === k ? "on" : ""}">${t(lab)} <span class="n">${n.toLocaleString(LOC)}</span></button>`; }).join("");
+  const fonti = {}; v.forEach(b => { const x = b.fonte || ""; fonti[x] = (fonti[x] || 0) + 1; });
+  const ks = Object.keys(fonti).sort();
+  if (IMP.fonte && !fonti[IMP.fonte]) IMP.fonte = "";
+  $("impFonte").hidden = ks.length < 2;
+  $("impFonte").innerHTML = `<option value="">${t("Da tutti gli zip e le cartelle")}</option>` +
+    ks.map(x => `<option value="${esc(x)}"${x === IMP.fonte ? " selected" : ""}>${esc(x || "?")} (${fonti[x].toLocaleString(LOC)})</option>`).join("");
+}
+$("impFiltro").onclick = e => { const b = e.target.closest("button"); if (!b) return; IMP.filtro = b.dataset.f; impMostra(true); };
+$("impFonte").onchange = () => { IMP.fonte = $("impFonte").value; impMostra(true); };
+$("impCerca").oninput = () => { IMP.cerca = $("impCerca").value; clearTimeout(IMP.tCerca); IMP.tCerca = setTimeout(() => impMostra(true), 250); };
 function mostraImp(si) {
   if (si) { $("vDig").hidden = true; $("bDig").classList.remove("on"); mostraSet(false); }
   $("vImp").hidden = !si; $("main").hidden = si || !$("vDig").hidden || !$("vSet").hidden;
   $("bImp").classList.toggle("on", si);
-  if (si) { impElenco(); chiudiMenu(); }
+  if (si) { impElenco(); chiudiMenu(); VISTA.salva("imp"); }
 }
 $("bImp").onclick = () => mostraImp(true);
 $("impVediNuovi").onclick = () => document.querySelector('#navLib [data-solo="nuovi"]').click();
@@ -2052,7 +2357,10 @@ async function impElenco() {
   $("impTemaSel").innerHTML = `<option value="">— lascia —</option>` + IMP.temi.map(t => `<option>${esc(t)}</option>`).join("");
   $("impRaccList").innerHTML = [...new Set(r.attesa.map(b => b.raccolta).filter(Boolean))].map(x => `<option value="${esc(x)}">`).join("");
   impStato(r.stato);
+  const torna = IMP.torna; IMP.torna = null;             // dopo F5: stesse schede e stesso punto della lista
+  if (torna && torna.n) IMP.n = Math.min(torna.n, r.attesa.length);
   impMostra();
+  if (torna && torna.top) impScroller($("impGriglia")).scrollTop = torna.top;
 }
 function impStato(s) {
   const el = $("impStato");
@@ -2065,35 +2373,115 @@ function impStato(s) {
   if (s.attivo) IMP.timer = setTimeout(async () => { const r = await api("/api/importa").catch(() => null); if (!r) return; const prima = IMP.attesa.length; IMP.attesa = r.attesa; $("nImp").textContent = r.attesa.length || ""; impStato(r.stato); if (r.attesa.length !== prima || !r.stato.attivo) impMostra(); }, 1200);
 }
 function impVal(b, k) { return (IMP.modifiche[b.id] || {})[k] ?? b[k] ?? ""; }
-function impMostra() {
-  const v = IMP.attesa;
-  $("impVuota").hidden = v.length > 0; $("impBarra").hidden = !v.length;
-  $("impConta").textContent = v.length ? `${IMP.sel.size} di ${v.length} selezionati` : "";
-  $("impTutti").checked = v.length > 0 && IMP.sel.size === v.length;
-  const opz = t => IMP.temi.concat(IMP.temi.includes(t) ? [] : [t]).map(x => `<option${x === t ? " selected" : ""}>${esc(x)}</option>`).join("");
-  $("impGriglia").innerHTML = v.map(b => `<div class="imp-card${IMP.sel.has(b.id) ? " on" : ""}" data-id="${b.id}">
-    <div class="fig"><img src="/api/importa/${b.id}/anteprima.webp" alt="" loading="lazy"><input type="checkbox" ${IMP.sel.has(b.id) ? "checked" : ""}>
-      ${b.doppione ? `<span class="dop" title="Sembra lo stesso disegno di: ${esc(b.doppione.percorso)}">già nel catalogo <img src="/img/${b.doppione.i}.webp?v=${AVV}" alt=""></span>` : ""}</div>
+// la griglia si disegna a blocchi (migliaia di schede tutte insieme bloccavano la pagina per secondi)
+const IMP_BLOCCO = 120;
+function impTesta() {
+  const tutti = IMP.attesa, v = IMP.vis || [];
+  $("impConta").textContent = tutti.length ? `${IMP.sel.size} ${t("di")} ${tutti.length} ${t("selezionati")}` +
+    (v.length !== tutti.length ? ` · ${t("mostrati")} ${v.length}` : "") : "";
+  $("impTutti").checked = v.length > 0 && v.every(b => IMP.sel.has(b.id));
+}
+function impCard(b) {
+  const g = b.doppione ? dopGiudizio(b, b.doppione) : null, tema = impVal(b, "tema");
+  return `<div class="imp-card${IMP.sel.has(b.id) ? " on" : ""}" data-id="${b.id}">
+    <div class="fig"><img src="/api/importa/${b.id}/anteprima.webp" alt="" loading="lazy" decoding="async"><input type="checkbox" ${IMP.sel.has(b.id) ? "checked" : ""}>
+      ${!b.doppione && b.doppio_di ? (a => `<span class="dop g-${dopGiudizio(b, impComeCat(a)) || "x"}" title="${t("Clicca per confrontarli")}">${t("uguale a un altro in attesa")}${a ? ` (${esc(a.formato || "")})` : ""}</span>`)(impAltroAtt(b)) : ""}
+      ${b.doppione ? `<span class="dop g-${g || "x"}" title="${t("Clicca per confrontarli")}: ${esc(b.doppione.percorso)}">${t("già nel catalogo")}${{ uguale: " · " + t("stessi colori"), colori: " · " + t("altri colori"), diverso: " · " + t("diverso?") }[g] || ""} <img src="/img/${b.doppione.i}.webp?v=${AVV}" alt="" loading="lazy"></span>` : ""}</div>
     <div class="corpo">
       <input class="nome" data-k="nome" value="${esc(impVal(b, "nome"))}" title="Nome del file">
       <span class="hint">${n1(b.larg)} × ${n1(b.alt)} mm · ${b.colori} colori · ${b.punti.toLocaleString(LOC)} punti · da ${esc(b.formato)}</span>
-      <select data-k="tema" title="Tema (cartella)">${opz(impVal(b, "tema"))}</select>
+      <select data-k="tema" title="Tema (cartella)"><option selected>${esc(tema)}</option></select>
       <input data-k="raccolta" list="impRaccList" value="${esc(impVal(b, "raccolta"))}" placeholder="raccolta (cartella)" title="Raccolta: sottocartella del tema">
       ${b.avviso ? `<span class="hint" style="color:var(--amber)">${esc(b.avviso)}</span>` : ""}
+      ${(b.allegati || []).length ? `<span class="hint" title="${esc(b.allegati.map(x => x[0]).join(", "))}">📎 ${b.allegati.length} ${t(b.allegati.length === 1 ? "allegato (istruzioni, PDF…)" : "allegati (istruzioni, PDF…)")}</span>` : ""}
       <span class="hint" title="${esc(b.origine)}">${esc(b.fonte || "")}</span>
-    </div></div>`).join("");
+    </div></div>`;
 }
+function impAltri(fino) {                                  // il blocco successivo, quando si arriva in fondo
+  const v = IMP.vis || [], g = $("impGriglia"), da = g.querySelectorAll(".imp-card").length;
+  fino = fino ?? da + IMP_BLOCCO;
+  if (da >= v.length || da >= fino) return;
+  g.insertAdjacentHTML("beforeend", v.slice(da, fino).map(impCard).join(""));
+  IMP.n = Math.max(IMP.n || 0, fino);
+}
+function impTogli(id) {                                   // via una scheda senza ridisegnare la griglia
+  IMP.sel.delete(id);
+  IMP.attesa = IMP.attesa.filter(x => x.id !== id);
+  IMP.vis = (IMP.vis || []).filter(x => x.id !== id);
+  document.querySelector(`#impGriglia .imp-card[data-id="${id}"]`)?.remove();
+  $("impVuota").hidden = IMP.attesa.length > 0; $("impBarra").hidden = !IMP.attesa.length;
+  impFiltri(); impTesta(); impAltri(IMP.n);
+}
+function impMostra(daCapo) {
+  const tutti = IMP.attesa;
+  $("impVuota").hidden = tutti.length > 0; $("impBarra").hidden = !tutti.length;
+  impFiltri();
+  IMP.vis = impVisibili();
+  impTesta();
+  if (daCapo) IMP.n = 0;
+  VISTA.set("oh_imp_filtri", { filtro: IMP.filtro, fonte: IMP.fonte, cerca: IMP.cerca });
+  if ($("impCerca").value !== IMP.cerca) $("impCerca").value = IMP.cerca;
+  const n = Math.max(IMP.n || 0, IMP_BLOCCO);
+  const g = $("impGriglia"), sc = impScroller(g);
+  const prima = sc.scrollTop;
+  g.innerHTML = IMP.vis.slice(0, n).map(impCard).join("");
+  IMP.n = n;
+  if (daCapo) {
+    // nuovo filtro: la barra resta dov'è; se si era già dentro la lista, si riparte dalla prima scheda subito sotto
+    sc.scrollTop = prima;
+    const sotto = g.getBoundingClientRect().top - $("impBarra").getBoundingClientRect().bottom;
+    if (sotto < 0) sc.scrollTop += sotto;
+  }
+}
+function impScroller(el) {                                // il contenitore che scorre davvero
+  for (let e = el.parentElement; e && e !== document.body; e = e.parentElement) {
+    const o = getComputedStyle(e).overflowY;
+    if ((o === "auto" || o === "scroll") && e.scrollHeight > e.clientHeight) return e;
+  }
+  return document.scrollingElement;
+}
+// fondo della griglia visibile -> altre schede
+const impFondo = document.createElement("div");
+impFondo.style.height = "1px";
+$("impGriglia").after(impFondo);
+function impVicinoFondo() {                                // fondo a meno di uno schermo e mezzo: altre schede
+  if ($("vImp").hidden) return;
+  if (impFondo.getBoundingClientRect().top < innerHeight * 2.5) impAltri();
+}
+new IntersectionObserver(es => { if (es.some(x => x.isIntersecting)) impAltri(); }, { rootMargin: "1200px" }).observe(impFondo);
+document.addEventListener("scroll", () => { if (!IMP.tScroll) IMP.tScroll = requestAnimationFrame(() => {
+  IMP.tScroll = 0; impVicinoFondo();
+  if (!$("vImp").hidden) VISTA.set("oh_imp_pos", { n: IMP.n, top: impScroller($("impGriglia")).scrollTop });
+}); }, { capture: true, passive: true });
+// la tendina dei temi si riempie solo quando la si apre (3.000 tendine piene = 80.000 elementi)
+$("impGriglia").addEventListener("pointerdown", e => {
+  const sel = e.target.closest('select[data-k="tema"]'); if (!sel || sel.dataset.piena) return;
+  const cur_ = sel.value;
+  sel.innerHTML = IMP.temi.concat(IMP.temi.includes(cur_) ? [] : [cur_]).map(x => `<option${x === cur_ ? " selected" : ""}>${esc(x)}</option>`).join("");
+  sel.dataset.piena = "1";
+});
+$("impGriglia").addEventListener("focusin", e => {
+  const sel = e.target.closest('select[data-k="tema"]'); if (sel && !sel.dataset.piena) sel.dispatchEvent(new Event("pointerdown", { bubbles: true }));
+});
 $("impGriglia").addEventListener("click", e => {
   const c = e.target.closest(".imp-card"); if (!c || e.target.closest(".corpo")) return;
+  if (e.target.closest(".dop")) { dopApri(c.dataset.id); return; }
   const id = c.dataset.id;
   IMP.sel.has(id) ? IMP.sel.delete(id) : IMP.sel.add(id);
-  impMostra();
+  c.classList.toggle("on", IMP.sel.has(id));               // solo questa scheda, non tutta la griglia
+  c.querySelector(".fig input").checked = IMP.sel.has(id);
+  impTesta();
 });
 $("impGriglia").addEventListener("change", e => {
   const c = e.target.closest(".imp-card"), k = e.target.dataset.k; if (!c || !k) return;
   (IMP.modifiche[c.dataset.id] ||= {})[k] = e.target.value;
 });
-$("impTutti").onchange = () => { IMP.sel = $("impTutti").checked ? new Set(IMP.attesa.map(b => b.id)) : new Set(); impMostra(); };
+$("impTutti").onchange = () => {                       // «tutti» = quelli mostrati dal filtro
+  const v = impVisibili();
+  v.forEach(b => $("impTutti").checked ? IMP.sel.add(b.id) : IMP.sel.delete(b.id));
+  document.querySelectorAll("#impGriglia .imp-card").forEach(c => { const on = IMP.sel.has(c.dataset.id); c.classList.toggle("on", on); c.querySelector(".fig input").checked = on; });
+  impTesta();
+};
 $("impApplica").onclick = () => {
   if (!IMP.sel.size) { toast("Seleziona prima qualche disegno"); return; }
   const t = $("impTemaSel").value, r = $("impRaccSel").value.trim();
@@ -2101,32 +2489,128 @@ $("impApplica").onclick = () => {
   impMostra();
 };
 $("impConferma").onclick = async () => {
-  const ids = IMP.sel.size ? [...IMP.sel] : IMP.attesa.filter(b => !b.doppione).map(b => b.id);
+  const ids = IMP.sel.size ? [...IMP.sel] : impVisibili().filter(b => !b.doppione && !b.doppio_di).map(b => b.id);
   if (!ids.length) { toast("Niente da mettere in libreria (i doppioni vanno selezionati a mano)"); return; }
-  const b = $("impConferma"); b.disabled = true; b.textContent = `Metto in libreria ${ids.length}…`;
+  // parte in sottofondo: l'avanzamento è nella barra in alto, l'elenco si aggiorna da solo alla fine
   try {
-    const r = await api("/api/importa/conferma", { voci: ids.map(id => ({ id, ...(IMP.modifiche[id] || {}) })) });
-    toast(`${r.fatti.length} disegni messi in libreria`);
+    await api("/api/importa/conferma", { voci: ids.map(id => ({ id, ...(IMP.modifiche[id] || {}) })) });
+    toast(t("Metto in libreria {} disegni: segui la barra in alto").replace("{}", ids.length.toLocaleString(LOC)));
     ids.forEach(id => { IMP.sel.delete(id); delete IMP.modifiche[id]; });
-  } catch (e) { toast("Non riuscito: " + e.message); }
-  b.disabled = false; b.innerHTML = `<svg class="i"><use href="#i-check"/></svg>Metti in libreria`;
-  impElenco();
+    impMostra();
+    guardaOra();
+  } catch (e) { toast(t("Non riuscito:") + " " + e.message); }
 };
 $("impScarta").onclick = async () => {
   if (!IMP.sel.size) { toast("Seleziona i disegni da scartare"); return; }
   await api("/api/importa/scarta", { ids: [...IMP.sel] }).catch(e => toast(e.message));
   IMP.sel.clear(); impElenco();
 };
+// ---- confronto con il doppione: a sinistra il disegno da importare, a destra quello già nel catalogo ----
+const DOP = { id: null };
+const dopLista = () => impVisibili().filter(b => b.doppione || b.doppio_di);
+async function dopApri(id) {
+  const b = IMP.attesa.find(x => x.id === id); if (!b || !(b.doppione || b.doppio_di)) return;
+  DOP.id = id;
+  const l = dopLista(), k = l.findIndex(x => x.id === id);
+  $("dopPos").textContent = k >= 0 ? `${k + 1} / ${l.length}` : "";
+  $("dopPrec").disabled = k <= 0; $("dopSucc").disabled = k < 0 || k >= l.length - 1;
+  $("dopCorpo").innerHTML = `<span class="hint">${t("Carico…")}</span>`;
+  apri("mDop");
+  // l'altro: nel catalogo, oppure un altro disegno in attesa (stesso disegno in un altro formato)
+  const a = b.doppione ? null : impAltroAtt(b);
+  const c = b.doppione ? await api("/api/dettaglio?i=" + b.doppione.i).catch(() => null)
+    : a && { ...impComeCat(a), nome: impVal(a, "nome"), fmt: a.formato, percorso: a.origine || a.fonte, allegati: (a.allegati || []).map(x => x[0]) };
+  if (DOP.id !== id) return;
+  const sw = seq => (seq || []).map(h => `<i style="background:${esc(h)}" title="${esc(h)}"></i>`).join("");
+  const conf = (a, z, tol) => Math.abs(a - z) <= tol ? "ok" : "diff";
+  const pct = (a, z) => z ? Math.round((a - z) / z * 100) : 0;
+  const riga = (k_, v, cl = "") => `<div><div class="k">${t(k_)}</div><div class="v ${cl}">${v}</div></div>`;
+  const sin = `<div class="lato"><div class="tit">${t("Da importare")}</div>` +
+    riga("Nome", esc(impVal(b, "nome"))) +
+    riga("Misure", fMM(b.larg, b.alt), c ? conf(b.larg, c.w, 1) + " " + conf(b.alt, c.h, 1) : "") +
+    riga("Punti", b.punti.toLocaleString(LOC) + (c ? ` <span class="k">(${pct(b.punti, c.punti) > 0 ? "+" : ""}${pct(b.punti, c.punti)}%)</span>` : ""), c ? conf(b.punti, c.punti, c.punti * 0.03) : "") +
+    riga("Colori", String(b.colori), c ? conf(b.colori, c.col, 0) : "") +
+    `<div class="sw">${sw(b.sequenza)}</div>` +
+    riga("Formato", esc(b.formato || "")) +
+    riga("Da dove viene", esc(b.origine || b.fonte || "")) +
+    ((b.allegati || []).length ? riga("Allegati", esc(b.allegati.map(x => x[0]).join(", "))) : "") + `</div>`;
+  const titDx = b.doppione ? t("Già nel catalogo") : t("Altro in attesa (resta questo)");
+  const des = c ? `<div class="lato dx"><div class="tit">${titDx}</div>` +
+    riga("Nome", esc(c.nome)) +
+    riga("Misure", fMM(c.w, c.h)) +
+    riga("Punti", c.punti.toLocaleString(LOC)) +
+    riga("Colori", String(c.col)) +
+    `<div class="sw">${sw(c.seq)}</div>` +
+    riga("Formato", esc(c.fmt || "")) +
+    riga(b.doppione ? "Dove si trova" : "Da dove viene", esc(c.percorso)) +
+    (c.autore ? riga("Autore", esc(c.autore)) : "") +
+    ((c.allegati || []).length ? riga("Allegati", esc(c.allegati.join(", "))) : "") + `</div>`
+    : `<div class="lato dx"><div class="tit">${titDx}</div>${esc(b.doppione ? b.doppione.percorso : "")}</div>`;
+  // giudizio in una riga: stesse forme? stessi colori?
+  const giud = dopGiudizio(b, c), forme = giud === "uguale" || giud === "colori", stessiCol = giud === "uguale";
+  const es = $("dopEsito");
+  es.hidden = !c;
+  if (c) {
+    es.className = "dop-esito " + (forme ? (stessiCol ? "uguale" : "colori") : "diverso");
+    es.textContent = forme ? (stessiCol ? t("Stesso ricamo e stessi colori: puoi scartarlo tranquillamente.")
+      : t("Stesso ricamo, cambiano solo i colori suggeriti.")) : t("Misure o punti diversi: guarda bene le immagini.");
+  }
+  $("dopColori").hidden = !(b.doppione && c && !stessiCol && b.colori === c.col && [".pes", ".jef", ".vp3", ".xxx", ".u01"].includes((c.fmt || "").toLowerCase()));
+  $("dopCorpo").innerHTML = sin +
+    `<figure><img src="/api/importa/${esc(b.id)}/anteprima.webp" alt=""></figure>` +
+    (b.doppione ? `<figure><img src="/api/anteprima?v=${AVV}&i=${b.doppione.i}" alt=""></figure>`
+      : `<figure><img src="/api/importa/${esc(b.doppio_di)}/anteprima.webp" alt=""></figure>`) + des;
+}
+function dopVai(passo) {
+  const l = dopLista(), k = l.findIndex(x => x.id === DOP.id), n = l[k + passo];
+  if (n) dopApri(n.id); else chiudi("mDop");
+}
+$("dopPrec").onclick = () => dopVai(-1);
+$("dopSucc").onclick = () => dopVai(1);
+$("dopTieni").onclick = () => {
+  IMP.sel.add(DOP.id);
+  const c = document.querySelector(`#impGriglia .imp-card[data-id="${DOP.id}"]`);
+  if (c) { c.classList.add("on"); c.querySelector(".fig input").checked = true; }
+  impTesta(); toast(t("Selezionato: verrà messo in libreria con gli altri selezionati")); dopVai(1); };
+$("dopColori").onclick = async () => {
+  const id = DOP.id, l = dopLista(), k = l.findIndex(x => x.id === id), dopo = l[k + 1] || l[k - 1];
+  $("dopColori").disabled = true;
+  try { const r = await api("/api/importa/colori", { id }); COLV[r.i] = Date.now(); toast(t("Fatto: il disegno che avevi ha i colori nuovi (l'originale è salvato in _catalogo, cartella colori_backup)")); }
+  catch (e) { toast(t("Non riuscito:") + " " + e.message); $("dopColori").disabled = false; return; }
+  $("dopColori").disabled = false;
+  impTogli(id);
+  $("nImp").textContent = IMP.attesa.length || "";
+  if (dopo) dopApri(dopo.id); else chiudi("mDop");
+};
+$("dopScarta").onclick = async () => {
+  const id = DOP.id, l = dopLista(), k = l.findIndex(x => x.id === id), dopo = l[k + 1] || l[k - 1];
+  try { await api("/api/importa/scarta", { ids: [id] }); } catch (e) { toast(e.message); return; }
+  impTogli(id);
+  $("nImp").textContent = IMP.attesa.length || "";
+  if (dopo) dopApri(dopo.id); else chiudi("mDop");
+};
+document.addEventListener("keydown", e => {
+  if ($("mDop").hidden || e.target.matches("input, textarea, select")) return;
+  if (e.key === "ArrowRight") dopVai(1);
+  else if (e.key === "ArrowLeft") dopVai(-1);
+});
+
 async function impAvvia(u, body) {
-  try { const s = await api(u, body); impStato(s); if (s.trovati) toast(`${s.trovati} file trovati`); }
+  try { const s = await api(u, body); impStato(s); guardaOra(); if (s.trovati) toast(`${s.trovati} file trovati`); }
   catch (e) { toast(e.message); }
 }
-function impFile(files) {
-  [...files].forEach(f => {
-    const r = new FileReader();
-    r.onload = () => impAvvia("/api/importa/file", { nome: f.name, dati: r.result });
-    r.readAsDataURL(f);
-  });
+// il file parte così com'è (niente base64: con zip grandi il browser non ce la fa e arrivava vuoto)
+async function impFile(files) {
+  for (const f of [...files]) {
+    if (f.size > 1500e6) { toast(f.name + ": " + t("file troppo grande (più di 1,5 GB): scrivi qui sotto la cartella in cui si trova e premi «Importa»")); continue; }
+    if (f.size > 50e6) toast(t("Carico {}…").replace("{}", f.name));
+    try {
+      const r = await fetch("/api/importa/grezzo?nome=" + encodeURIComponent(f.name), { method: "POST", body: f });
+      const s = await r.json();
+      if (!r.ok) throw new Error(s.errore || r.statusText);
+      impStato(s); guardaOra();
+    } catch (e) { toast(f.name + ": " + e.message); }
+  }
 }
 $("impDrop").onclick = () => $("impFile").click();
 $("impDrop").onkeydown = e => { if (e.key === "Enter" || e.key === " ") $("impFile").click(); };
