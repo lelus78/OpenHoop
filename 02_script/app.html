@@ -442,7 +442,7 @@ input[type=range] { width: 100%; accent-color: var(--accent); margin: 14px 0 2px
 .dop-esito.diverso { background: var(--surface-2); color: var(--muted); }
 .dop-griglia .sw i { width: 14px; height: 14px; border-radius: 4px; border: 1px solid #0002; display: inline-block; }
 @media (max-width: 900px) { .dop-griglia { grid-template-columns: 1fr 1fr; } .dop-griglia .lato.dx { text-align: left; align-items: flex-start; } }
-.imp-card .dop { cursor: pointer; position: absolute; right: 8px; top: 8px; background: var(--amber-soft); color: var(--amber); font-size: .72rem; font-weight: 700; border-radius: 99px; padding: 3px 8px; display: flex; gap: 6px; align-items: center; }
+.imp-card .dop { cursor: pointer; position: absolute; right: 8px; top: 8px; max-width: calc(100% - 44px); background: var(--amber-soft); color: var(--amber); font-size: .72rem; font-weight: 700; border-radius: 99px; padding: 3px 8px; display: flex; gap: 6px; align-items: center; }
 .imp-card .dop img { width: 34px; height: 34px; border-radius: 6px; background: #fff; }
 .imp-card .corpo { padding: 8px 10px 10px; display: flex; flex-direction: column; gap: 6px; font-size: .8rem; }
 .imp-card .corpo input, .imp-card .corpo select { width: 100%; box-sizing: border-box; min-width: 0; }
@@ -2011,7 +2011,7 @@ function mostraColVar() {
   el.hidden = !cv;
   if (!cv) { el.innerHTML = ""; return; }
   el.innerHTML = `<b>${t("Colori:")}</b>` + cv.var.map((v, k) => `<button data-k="${k}" class="${k === cv.attiva ? "on" : ""}" title="${esc(v.nome)}">
-    <span>${esc(v.nome === "Originali" ? t("Originali") : v.nome)}</span><span class="sw">${v.seq.slice(0, 24).map(h => `<i style="background:${esc(h)}"></i>`).join("")}</span></button>`).join("");
+    <span>${esc(v.nome === "Originali" ? t("Originali") : /^da /.test(v.nome) ? v.nome : t("da {}").replace("{}", v.nome))}</span><span class="sw">${v.seq.slice(0, 24).map(h => `<i style="background:${esc(h)}"></i>`).join("")}</span></button>`).join("");
 }
 document.addEventListener("click", async e => {
   const bt = e.target.closest("#dColVar button"); if (!bt || bt.classList.contains("on")) return;
@@ -2362,6 +2362,16 @@ async function impElenco() {
   impMostra();
   if (torna && torna.top) impScroller($("impGriglia")).scrollTop = torna.top;
 }
+const r_intervallo = s => (s.dis_tot > 2000 ? 4000 : 1200);    // importazioni grandi: meno richieste al server
+// miniatura che non arriva (server occupato a importare): si riprova da sola, fino a 3 volte
+document.addEventListener("error", e => {
+  const im = e.target;
+  if (!(im instanceof HTMLImageElement) || !im.closest("#impGriglia, #mDop")) return;
+  const n = +(im.dataset.riprova || 0);
+  if (n >= 3) return;
+  im.dataset.riprova = n + 1;
+  setTimeout(() => { const u = im.src.replace(/([?&])riprova=\d+/, "").replace(/[?&]$/, ""); im.src = u + (u.includes("?") ? "&" : "?") + "riprova=" + (n + 1); }, 1500 * (n + 1));
+}, true);
 function impStato(s) {
   const el = $("impStato");
   if (!s || (!s.attivo && !s.totale)) { el.hidden = true; return; }
@@ -2371,7 +2381,16 @@ function impStato(s) {
   el.innerHTML = (s.attivo ? `Importo… ${s.fatti}/${s.totale} file${s.ora ? " · " + esc(s.ora) : ""} · ` : `Importazione finita: `) + parti +
     (s.errori.length ? `<span class="err">${s.errori.slice(-5).map(esc).join("<br>")}${s.errori.length > 5 ? `<br>… e altri ${s.errori.length - 5}` : ""}</span>` : "");
   clearTimeout(IMP.timer);
-  if (s.attivo) IMP.timer = setTimeout(async () => { const r = await api("/api/importa").catch(() => null); if (!r) return; const prima = IMP.attesa.length; IMP.attesa = r.attesa; $("nImp").textContent = r.attesa.length || ""; impStato(r.stato); if (r.attesa.length !== prima || !r.stato.attivo) impMostra(); }, 1200);
+  if (s.attivo) IMP.timer = setTimeout(async () => {
+    const r = await api("/api/importa").catch(() => null); if (!r) { IMP.timer = setTimeout(() => impStato(s), 3000); return; }
+    const prima = IMP.attesa.length; IMP.attesa = r.attesa; $("nImp").textContent = r.attesa.length || ""; impStato(r.stato);
+    if (r.attesa.length === prima && r.stato.attivo) return;
+    // i nuovi arrivano in cima: si ridisegna solo se si è in cima alla lista (prima ogni 1,2 s, interrompendo le
+    // miniature che stavano caricando); se si sta scorrendo si aggiornano solo i numeri
+    const sc = impScroller($("impGriglia"));
+    if (!r.stato.attivo || $("impGriglia").getBoundingClientRect().top > -200) impMostra();
+    else { impFiltri(); IMP.vis = impVisibili(); impTesta(); }
+  }, r_intervallo(s));
 }
 function impVal(b, k) { return (IMP.modifiche[b.id] || {})[k] ?? b[k] ?? ""; }
 // la griglia si disegna a blocchi (migliaia di schede tutte insieme bloccavano la pagina per secondi)
@@ -2390,7 +2409,7 @@ function impCard(b) {
       ${b.doppione ? `<span class="dop g-${g || "x"}" title="${t("Clicca per confrontarli")}: ${esc(b.doppione.percorso)}">${t("già nel catalogo")}${{ uguale: " · " + t("stessi colori"), colori: " · " + t("altri colori"), diverso: " · " + t("diverso?") }[g] || ""} <img src="/img/${b.doppione.i}.webp?v=${AVV}" alt="" loading="lazy"></span>` : ""}</div>
     <div class="corpo">
       <input class="nome" data-k="nome" value="${esc(impVal(b, "nome"))}" title="Nome del file">
-      <span class="hint">${n1(b.larg)} × ${n1(b.alt)} mm · ${b.colori} colori · ${b.punti.toLocaleString(LOC)} punti · da ${esc(b.formato)}</span>
+      <span class="hint">${n1(b.larg)} × ${n1(b.alt)} mm · ${b.colori} ${b.colori === 1 ? "colore" : "colori"} · ${b.punti.toLocaleString(LOC)} punti · da ${esc(b.formato)}</span>
       <select data-k="tema" title="Tema (cartella)"><option selected>${esc(tema)}</option></select>
       <input data-k="raccolta" list="impRaccList" value="${esc(impVal(b, "raccolta"))}" placeholder="raccolta (cartella)" title="Raccolta: sottocartella del tema">
       ${b.avviso ? `<span class="hint" style="color:var(--amber)">${esc(b.avviso)}</span>` : ""}

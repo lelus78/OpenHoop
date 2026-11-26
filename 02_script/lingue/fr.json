@@ -774,5 +774,7 @@
  "raccolta (cartella)": "collection (dossier)",
  "Nel file: {}": "Dans le fichier : {}",
  "già nella libreria (saltati)": "déjà dans la bibliothèque (ignorés)",
- "{} già importati prima": "{} déjà importés"
+ "{} già importati prima": "{} déjà importés",
+ "{} × {} mm · {} colore · {} punti · da {}": "{} × {} mm · {} couleur · {} points · depuis {}",
+ "da {}": "de {}"
 }

@@ -2036,7 +2036,7 @@ def _imp_uno(d, fonte, sorgenti, in_attesa=None, salta=False):
         if altro is not None:
             if IM.prio(info.get("formato")) < IM.prio(altro.get("formato")):
                 for b in _imp_carica():                       # chi puntava al vecchio ora punta al nuovo
-                    if b.get("doppio_di") == altro["id"] or b is altro:
+                    if b.get("doppio_di") == altro["id"] or b.get("id") == altro["id"]:
                         b["doppio_di"] = iid
                         try:
                             _imp_scrivi_info(b)
@@ -2569,7 +2569,7 @@ def imp_prendi_colori(body):
     with _COL_LOCK:
         cv = _col_var()
         v = cv.get(rel) or {"attiva": 0, "var": [{"nome": "Originali", "fili": _fili_di(vecchio)}]}
-        nome = "da " + os.path.basename(info.get("origine") or info.get("fonte") or "importato")
+        nome = os.path.basename(info.get("origine") or info.get("fonte") or "?")   # la pagina scrive «da …»
         k = next((n for n, x in enumerate(v["var"]) if [f[0] for f in x["fili"]] == [f[0] for f in fili]), None)
         if k is None:
             v["var"].append({"nome": nome, "fili": fili})

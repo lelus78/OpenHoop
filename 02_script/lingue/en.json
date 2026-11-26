@@ -774,5 +774,7 @@
  "raccolta (cartella)": "collection (folder)",
  "Nel file: {}": "In the file: {}",
  "già nella libreria (saltati)": "already in the library (skipped)",
- "{} già importati prima": "{} already imported before"
+ "{} già importati prima": "{} already imported before",
+ "{} × {} mm · {} colore · {} punti · da {}": "{} × {} mm · {} colour · {} stitches · from {}",
+ "da {}": "from {}"
 }
