@@ -772,5 +772,7 @@
  "Da dove vengono (zip o cartella)": "Where they come from (zip or folder)",
  "{} × {} mm · {} colori · {} punti · da {}": "{} × {} mm · {} colours · {} stitches · from {}",
  "raccolta (cartella)": "collection (folder)",
- "Nel file: {}": "In the file: {}"
+ "Nel file: {}": "In the file: {}",
+ "già nella libreria (saltati)": "already in the library (skipped)",
+ "{} già importati prima": "{} already imported before"
 }

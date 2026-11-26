@@ -1974,7 +1974,7 @@ def _tema_proposto(info, v):
     return t
 
 
-def _imp_uno(d, fonte, sorgenti, in_attesa=None):
+def _imp_uno(d, fonte, sorgenti, in_attesa=None, salta=False):
     import importa as IM
     from anteprima_bella import render
     pat, info = IM.prepara(d)
@@ -1987,6 +1987,17 @@ def _imp_uno(d, fonte, sorgenti, in_attesa=None):
         _IMP_STATO["gia"] += 1
         return
     in_attesa.add(info["sha1"])
+    if salta:
+        # importazione grande: quelli già in libreria (e i doppioni dello stesso scaricamento non nel formato
+        # migliore) non vanno in attesa, si contano soltanto; si decide prima di disegnare l'anteprima
+        if _doppione(info) is not None:
+            _IMP_STATO["saltati"] = _IMP_STATO.get("saltati", 0) + 1
+            return
+        if isinstance(in_attesa, _Attesa):
+            altro = in_attesa.cerca(info)
+            if altro is not None and IM.prio(info.get("formato")) >= IM.prio(altro.get("formato")):
+                _IMP_STATO["saltati"] = _IMP_STATO.get("saltati", 0) + 1
+                return
     iid =f"{int(time.time() * 1000):x}{next(_IMP_CONTA) % 65536:04x}"
     cart = os.path.join(IMP_DIR, iid)
     os.makedirs(cart, exist_ok=True)
@@ -2041,6 +2052,31 @@ def _imp_uno(d, fonte, sorgenti, in_attesa=None):
     _IMP_STATO["doppi" if dop is not None or info.get("doppio_di") else "nuovi"] += 1
 
 
+class _FattoZip(Exception):
+    pass
+
+
+GRANDE = int(os.environ.get("OPENHOOP_GRANDE") or 3000)    # oltre: i disegni già in libreria non vanno in attesa
+
+
+def _imp_zip_disco(IM, val, fonte):
+    zd = IM.ZipDisco(val[0], val[1])
+    grande = zd.totale > GRANDE or (len(val) > 2 and bool(val[2]))
+    sorgenti = _imp_sorgenti()
+    in_attesa = _Attesa()
+    _IMP_STATO["dis_tot"] = _IMP_STATO.get("dis_tot", 0) + zd.totale
+    for files, allegati, n in zd.blocchi():
+        gruppi = IM.raggruppa(files)
+        IM.assegna_allegati(gruppi, allegati)
+        for d in gruppi:
+            _IMP_STATO["ora"] = f"{fonte} · {d['nome']}"
+            try:
+                _imp_uno(d, fonte, sorgenti, in_attesa, salta=grande)
+            except Exception as e:
+                _IMP_STATO["errori"].append(f"{d['nome']}: {e}"[:200])
+        _IMP_STATO["dis_fatti"] = _IMP_STATO.get("dis_fatti", 0) + n
+
+
 def _imp_lavoratore():
     """Un'importazione alla volta, in sottofondo: la pagina chiede lo stato ogni secondo."""
     import importa as IM
@@ -2055,6 +2091,9 @@ def _imp_lavoratore():
             _imp_coda_salva()
         try:
             allegati = []                                    # PDF, istruzioni, tabelle dei colori
+            if tipo == "percorso" and val[0].lower().endswith(".zip") and os.path.isfile(val[0]):
+                _imp_zip_disco(IM, val, fonte)               # a blocchi, anche zip da 1 GB
+                raise _FattoZip()
             if tipo == "file":
                 nome, raw = val
                 files = IM.espandi(nome, raw, allegati)
@@ -2082,6 +2121,8 @@ def _imp_lavoratore():
                     _imp_uno(d, fonte, sorgenti, in_attesa)
                 except Exception as e:
                     _IMP_STATO["errori"].append(f"{d['nome']}: {e}"[:200])
+        except _FattoZip:
+            pass
         except Exception as e:
             _IMP_STATO["errori"].append(f"{fonte}: {e}"[:300])
         _IMP_STATO["fatti"] += 1
@@ -2122,7 +2163,7 @@ def imp_accoda(voci):
         raise ValueError("sto sistemando la libreria: importa quando ho finito")
     with _IMP_LOCK:
         if not _IMP_STATO["attivo"]:
-            _IMP_STATO.update(fatti=0, nuovi=0, doppi=0, gia=0, errori=[], ora="", totale=0, dis_tot=0, dis_fatti=0)
+            _IMP_STATO.update(fatti=0, nuovi=0, doppi=0, gia=0, saltati=0, errori=[], ora="", totale=0, dis_tot=0, dis_fatti=0)
             _IMP_ALL_CACHE.clear()
         _IMP_CODA.extend(voci)
         _IMP_STATO["totale"] = _IMP_STATO.get("totale", 0) + len(voci)
@@ -2570,7 +2611,15 @@ def imp_cartella(body):
     if not files:
         raise ValueError("nessun file da ricamo o zip in quella cartella" + (f" negli ultimi {giorni:g} giorni" if giorni else ""))
     # le sottocartelle diventano la raccolta (D:\Nuovi\Natale 2026\renna.pes -> raccolta «Natale 2026»)
-    voci = [("percorso", (f, os.path.relpath(f, cart)), os.path.relpath(f, cart)) for f in files]
+    # cartella grande (molti file o zip pesanti): i disegni già in libreria si saltano invece di metterli in attesa
+    peso = 0
+    for f in files:
+        try:
+            peso += os.path.getsize(f) if f.lower().endswith(".zip") else 0
+        except OSError:
+            pass
+    grande = len(files) > GRANDE or peso > 300_000_000
+    voci = [("percorso", (f, os.path.relpath(f, cart), grande), os.path.relpath(f, cart)) for f in files]
     return dict(imp_accoda(voci), trovati=len(files))
 
 

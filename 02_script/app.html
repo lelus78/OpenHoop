@@ -2366,7 +2366,8 @@ function impStato(s) {
   const el = $("impStato");
   if (!s || (!s.attivo && !s.totale)) { el.hidden = true; return; }
   el.hidden = false;
-  const parti = [`${s.nuovi} nuovi`, s.doppi ? `${s.doppi} già nel catalogo` : "", s.gia ? `${s.gia} già importati prima` : ""].filter(Boolean).join(" · ");
+  const parti = [`${s.nuovi} nuovi`, s.doppi ? `${s.doppi} già nel catalogo` : "", s.saltati ? `${s.saltati.toLocaleString(LOC)} ${t("già nella libreria (saltati)")}` : "",
+    s.gia ? `${s.gia} già importati prima` : ""].filter(Boolean).join(" · ");
   el.innerHTML = (s.attivo ? `Importo… ${s.fatti}/${s.totale} file${s.ora ? " · " + esc(s.ora) : ""} · ` : `Importazione finita: `) + parti +
     (s.errori.length ? `<span class="err">${s.errori.slice(-5).map(esc).join("<br>")}${s.errori.length > 5 ? `<br>… e altri ${s.errori.length - 5}` : ""}</span>` : "");
   clearTimeout(IMP.timer);

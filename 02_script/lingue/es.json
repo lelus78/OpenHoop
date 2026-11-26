@@ -772,5 +772,7 @@
  "Da dove vengono (zip o cartella)": "De dónde vienen (zip o carpeta)",
  "{} × {} mm · {} colori · {} punti · da {}": "{} × {} mm · {} colores · {} puntadas · desde {}",
  "raccolta (cartella)": "colección (carpeta)",
- "Nel file: {}": "En el archivo: {}"
+ "Nel file: {}": "En el archivo: {}",
+ "già nella libreria (saltati)": "ya en la biblioteca (omitidos)",
+ "{} già importati prima": "{} ya importados antes"
 }

@@ -26,7 +26,9 @@ import xs_in_pes as XS
 
 FORMATI = set(RI.FORMATI) | {".xs"}
 ACCETTATI = FORMATI | {".zip"}
-MAX_FILE = 3000                      # file da ricamo per importazione (una cartella enorme non blocca il server)
+MAX_FILE = 3000                      # disegni di uno zip scaricato da un link (in memoria)
+MAX_CARTELLA = 200_000               # file di una cartella del disco (vanno in coda uno alla volta)
+BLOCCO = 300                         # disegni letti insieme da uno zip del disco (gli zip grandi non stanno in memoria)
 MAX_BYTE = 400_000_000               # zip scompattati in tutto
 UA = {"User-Agent": "archivio-ricami/1.0 (uso personale)"}
 # istruzioni, tabelle dei colori, PDF di montaggio: vanno con i disegni della loro cartella (o di quelle sotto)
@@ -352,7 +354,7 @@ def file_in_cartella(cartella, giorni=None):
             p = os.path.join(dp, f)
             if os.path.splitext(f)[1].lower() in ACCETTATI:
                 try:
-                    if os.path.getmtime(p) >= limite and os.path.getsize(p) < MAX_BYTE:
+                    if os.path.getmtime(p) >= limite and (p.lower().endswith(".zip") or os.path.getsize(p) < MAX_BYTE):
                         out.append(p)
                 except OSError:
                     pass
@@ -364,9 +366,72 @@ def file_in_cartella(cartella, giorni=None):
         if k not in migliore or prio(e) < prio(os.path.splitext(migliore[k])[1].lower()):
             migliore[k] = p
     out = list(migliore.values())
-    if len(out) > MAX_FILE:
-        raise ValueError(f"più di {MAX_FILE} disegni in questa cartella: importa una sottocartella alla volta")
+    if len(out) > MAX_CARTELLA:
+        raise ValueError(f"più di {MAX_CARTELLA} file in questa cartella: importa una sottocartella alla volta")
     return out
+
+
+class ZipDisco:
+    """Zip sul disco letto a blocchi (raccolte da 1 GB e 50.000 disegni): solo l'elenco resta in memoria.
+    Di ogni disegno in più formati si legge solo il formato migliore (prio). Gli zip dentro lo zip si scompattano
+    in memoria come prima (_zip)."""
+
+    def __init__(self, percorso, nome_rel):
+        try:
+            self.z = _nomi_zip(zipfile.ZipFile(percorso))
+        except zipfile.BadZipFile:
+            raise ValueError("zip rovinato o incompleto (si sta ancora scaricando?)")
+        self.base = os.path.splitext(os.path.basename(nome_rel))[0]
+        migliore, self.all_dir = {}, {}
+        for i in self.z.infolist():
+            e = os.path.splitext(i.filename)[1].lower()
+            if i.is_dir() or "__macosx" in i.filename.lower():
+                continue
+            if e in ALLEGATI and 0 < i.file_size <= MAX_ALLEGATO:
+                self.all_dir.setdefault(_dir(i.filename), []).append(i)
+            if e not in ACCETTATI:
+                continue
+            k = i.filename if e in (".zip", ".xs") else _chiave(i.filename)
+            if k not in migliore or prio(e) < prio(os.path.splitext(migliore[k].filename)[1].lower()):
+                migliore[k] = i
+        self.voci = sorted(migliore.values(), key=lambda i: (_dir(i.filename), i.filename.lower()))
+        self.totale = len(self.voci)
+
+    def blocchi(self, n=BLOCCO):
+        """-> (files [(rel, byte)], allegati [(rel, byte)], voci del blocco) un blocco alla volta."""
+        for a in range(0, len(self.voci), n):
+            files, allegati, dirs = [], [], set()
+            for i in self.voci[a:a + n]:
+                e = os.path.splitext(i.filename)[1].lower()
+                rel = self.base + "/" + i.filename
+                try:
+                    dati = self.z.read(i)
+                except Exception:
+                    continue                                  # voce rovinata: si salta, il resto va avanti
+                if e == ".zip":
+                    try:
+                        _zip(rel, dati, files, 1, [0, 0], allegati)
+                    except ValueError:
+                        pass
+                else:
+                    files.append((rel, dati))
+                d = _dir(i.filename)
+                for _ in range(3):                            # la sua cartella e due sopra (come assegna_allegati)
+                    dirs.add(d)
+                    if "/" not in d:
+                        break
+                    d = d.rsplit("/", 1)[0]
+            tot = 0
+            for d in sorted(dirs):
+                for i in self.all_dir.get(d, []):
+                    if tot + i.file_size > MAX_ALLEGATI:
+                        break
+                    try:
+                        allegati.append((self.base + "/" + i.filename, self.z.read(i)))
+                        tot += i.file_size
+                    except Exception:
+                        pass
+            yield files, allegati, len(self.voci[a:a + n])
 
 
 def scarica_link(url):
