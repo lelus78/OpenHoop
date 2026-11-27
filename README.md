@@ -34,6 +34,8 @@ open source and tested on real stitch-outs: if something doesn't work on your ma
   all sizes of the same design together, «fits my hoops» filter.
 - **Design card**: real size, colours, stitches, stitching time, jumps and how many threads you will trim by hand,
   thread list matched to your thread brand, shopping list of missing spools.
+  **Try other colours right on the design**: move the mouse over it, the part under the mouse lights up, click to
+  pick another thread — the preview changes at once and you can save it as a colour version of the design.
 - **Exports for your machine**: Brother/Baby Lock (PES), Janome/Elna (JEF), Husqvarna Viking/Pfaff (VP3),
   Bernina (EXP), Singer (XXX), Tajima/others (DST) — straight to the USB stick, with rotate, mirror,
   **smart resize** (stitches recalculated, not just stretched) and a printable sheet.
@@ -126,6 +128,7 @@ programmazione con l'intelligenza artificiale**; è gratuito, open source e prov
 **OpenHoop** è un programma gratuito e open source per chi ricama a macchina: riordina i file da ricamo (un solo file
 per disegno, niente doppioni, divisi per tema con le miniature), li trova per nome, misura o significato, mostra
 tempo, colori e tagli a mano, ed esporta nel formato della tua macchina direttamente sulla chiavetta.
+Puoi provare altri colori direttamente sul disegno: passi il mouse, la parte si illumina e con un clic ne cambi il filo.
 Ci sono anche il creatore di toppe (scudo, cerchio, ovale, cuore… su feltro o tutte ricamate, salvate accanto al
 disegno d'origine), scritte con 140 font da ricamo, un digitalizzatore per immagini semplici e la ricerca di disegni
 gratuiti. I file originali non vengono mai spostati né modificati e tutto resta sul tuo computer.
