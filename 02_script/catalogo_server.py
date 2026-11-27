@@ -2077,6 +2077,26 @@ def _imp_zip_disco(IM, val, fonte):
         _IMP_STATO["dis_fatti"] = _IMP_STATO.get("dis_fatti", 0) + n
 
 
+def _imp_cartella_disco(IM, val):
+    cd = IM.CartellaDisco(val[0], val[1])
+    grande = cd.totale > GRANDE or (len(val) > 2 and bool(val[2]))
+    sorgenti = _imp_sorgenti()
+    in_attesa = _Attesa()
+    _IMP_STATO["dis_tot"] = _IMP_STATO.get("dis_tot", 0) + cd.totale
+    for files, allegati, n in cd.blocchi():
+        gruppi = IM.raggruppa(files)
+        IM.assegna_allegati(gruppi, allegati)
+        for d in gruppi:
+            rel = next((r for e, (r, _b) in d["file"].items() if e not in IM.COLORI_ESTERNI), "")
+            fonte = cd.fonte(rel)
+            _IMP_STATO["ora"] = f"{fonte} · {d['nome']}"
+            try:
+                _imp_uno(d, fonte, sorgenti, in_attesa, salta=grande)
+            except Exception as e:
+                _IMP_STATO["errori"].append(f"{d['nome']}: {e}"[:200])
+        _IMP_STATO["dis_fatti"] = _IMP_STATO.get("dis_fatti", 0) + n
+
+
 def _imp_lavoratore():
     """Un'importazione alla volta, in sottofondo: la pagina chiede lo stato ogni secondo."""
     import importa as IM
@@ -2094,11 +2114,20 @@ def _imp_lavoratore():
             if tipo == "percorso" and val[0].lower().endswith(".zip") and os.path.isfile(val[0]):
                 _imp_zip_disco(IM, val, fonte)               # a blocchi, anche zip da 1 GB
                 raise _FattoZip()
+            if tipo == "disco":
+                _imp_cartella_disco(IM, val)                 # cartella enorme, a blocchi
+                raise _FattoZip()
             if tipo == "file":
                 nome, raw = val
                 files = IM.espandi(nome, raw, allegati)
             elif tipo == "percorso":                         # (file, percorso relativo alla cartella scelta)
                 files = IM.espandi(val[1], open(val[0], "rb").read(), allegati)
+                if os.path.splitext(val[0])[1].lower() in IM.SENZA_COLORI:      # DST con accanto il .rgb dei colori
+                    b0 = os.path.splitext(val[0])[0]
+                    for c in (b0 + ".rgb", b0 + ".RGB"):
+                        if os.path.isfile(c):
+                            files.append((os.path.splitext(val[1])[0] + ".rgb", open(c, "rb").read()))
+                            break
                 if not val[0].lower().endswith(".zip") and                         os.path.dirname(os.path.abspath(val[0])) != os.path.abspath(IMP_CODA_DIR):
                     # disegno preso da una cartella: allegati della sua cartella (o di quella sopra), con lo stesso
                     # percorso relativo del disegno così assegna_allegati li abbina
@@ -2607,6 +2636,25 @@ def imp_cartella(body):
     cart = os.path.expandvars(os.path.expanduser(str(body.get("percorso") or "").strip().strip('"')))
     giorni = body.get("giorni")
     giorni = float(giorni) if giorni not in (None, "", 0, "0") else None
+    if not os.path.isdir(cart):
+        raise ValueError("cartella non trovata")
+    if not giorni:
+        # cartella enorme (es. 600.000 DST sciolti): un solo lavoro letto a blocchi (CartellaDisco) + gli zip a parte;
+        # un elemento in coda per file intasava la coda e il suo salvataggio
+        zips, sciolti = [], 0
+        for dp, dn, fn in os.walk(cart):
+            dn[:] = [x for x in dn if not x.startswith((".", "$", "_"))]
+            for f in fn:
+                e = os.path.splitext(f)[1].lower()
+                if e == ".zip":
+                    zips.append(os.path.join(dp, f))
+                elif e in IM.FORMATI:
+                    sciolti += 1
+        if sciolti > 200:
+            nome = os.path.basename(os.path.normpath(cart)) or cart
+            voci = [("percorso", (f, os.path.relpath(f, cart), True), os.path.relpath(f, cart)) for f in zips]
+            voci.append(("disco", (cart, None, True), nome))
+            return dict(imp_accoda(voci), trovati=sciolti + len(zips))
     files = IM.file_in_cartella(cart, giorni)
     if not files:
         raise ValueError("nessun file da ricamo o zip in quella cartella" + (f" negli ultimi {giorni:g} giorni" if giorni else ""))

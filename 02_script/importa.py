@@ -32,6 +32,8 @@ BLOCCO = 300                         # disegni letti insieme da uno zip del disc
 MAX_BYTE = 400_000_000               # zip scompattati in tutto
 UA = {"User-Agent": "archivio-ricami/1.0 (uso personale)"}
 # istruzioni, tabelle dei colori, PDF di montaggio: vanno con i disegni della loro cartella (o di quelle sotto)
+COLORI_ESTERNI = {".rgb"}             # file dei colori accanto ai DST (4 byte per colore: R, G, B, 0)
+SENZA_COLORI = {".dst", ".exp", ".u01", ".tap", ".dsb", ".dsz", ".tbf"}   # formati che non dicono i colori
 ALLEGATI = {".pdf", ".txt", ".rtf", ".doc", ".docx", ".odt", ".htm", ".html", ".jpg", ".jpeg", ".png", ".gif", ".bmp"}
 IMMAGINI = {".jpg", ".jpeg", ".png", ".gif", ".bmp"}
 MAX_ALLEGATO = 20_000_000
@@ -45,6 +47,14 @@ def prio(e):
     """Ordine dei formati quando lo stesso disegno c'è in più formati: prima quello della macchina dell'utente
     (i suoi colori sono quelli pensati per i suoi fili), poi l'ordine solito di riordina."""
     return 0 if e == PREFERITO else RI.PRIO.get(e, 98) + 1
+
+
+MIN_DISEGNO = 300                    # byte: sotto, un file da ricamo è vuoto o troncato (un PES vero ne ha più di 500)
+
+
+def scelta(e, dim):
+    """Chiave per scegliere il formato di un disegno: prima quelli non vuoti, poi il formato preferito."""
+    return (dim < MIN_DISEGNO, prio(e))
 
 
 def nome_zip(i):
@@ -93,14 +103,22 @@ def _zip(nome, raw, out, prof=0, tot=None, allegati=None):
                 allegati.append((base + "/" + i.filename, z.read(i)))
     # dello stesso disegno in più formati (raccolte vendute con PES, DST, JEF, VP3… di ognuno) si legge solo il
     # formato migliore: lo zip pesa un settimo e non sfora il limite
-    migliore = {}
+    migliore, col = {}, {}
     for i in z.infolist():
         e = os.path.splitext(i.filename)[1].lower()
-        if i.is_dir() or e not in ACCETTATI or "__macosx" in i.filename.lower():
+        if i.is_dir() or "__macosx" in i.filename.lower():
+            continue
+        if e in COLORI_ESTERNI:
+            col[_chiave(i.filename)] = i
+            continue
+        if e not in ACCETTATI:
             continue
         k = i.filename if e in (".zip", ".xs") else _chiave(i.filename)
-        if k not in migliore or prio(e) < prio(os.path.splitext(migliore[k].filename)[1].lower()):
+        if k not in migliore or scelta(e, i.file_size) < scelta(os.path.splitext(migliore[k].filename)[1].lower(), migliore[k].file_size):
             migliore[k] = i
+    for k, i in list(migliore.items()):
+        if os.path.splitext(i.filename)[1].lower() in SENZA_COLORI and k in col:
+            out.append((base + "/" + col[k].filename, z.read(col[k])))
     for i in migliore.values():
         if len(out) >= MAX_FILE:
             raise ValueError(f"più di {MAX_FILE} disegni: importa una parte alla volta")
@@ -280,10 +298,23 @@ def firma(pat):
     return [round(v / max(1, n), 4) for v in g]
 
 
+def colori_rgb(pat, raw):
+    """Colori di un file .rgb (Tajima: 4 byte per colore, R G B 0) messi nel disegno, uno per blocco."""
+    cols = [(raw[k] << 16) | (raw[k + 1] << 8) | raw[k + 2] for k in range(0, len(raw) - 3, 4)]
+    if not cols:
+        return
+    n = sum(1 for _ in pat.get_as_colorblocks()) or 1
+    pat.threadlist = []
+    for k in range(max(n, 1)):
+        th = pe.EmbThread()
+        th.color = cols[k % len(cols)]
+        pat.threadlist.append(th)
+
+
 def prepara(d):
     """Un disegno raggruppato -> (EmbPattern pronto per la Brother, info) o eccezione se nessun formato si legge."""
     errore = None
-    for ext in sorted(d["file"], key=lambda e: prio(e) if e != ".xs" else 999):
+    for ext in sorted((e for e in d["file"] if e not in COLORI_ESTERNI), key=lambda e: prio(e) if e != ".xs" else 999):
         rel, raw = d["file"][ext]
         try:
             pat, extra = _leggi(ext, raw)
@@ -294,6 +325,8 @@ def prepara(d):
             errore = (str(ex) if isinstance(ex, ValueError) else f"{ext}: {type(ex).__name__} {ex}")[:300]
     else:
         raise ValueError(errore or "illeggibile")
+    if ".rgb" in d["file"] and (ext in SENZA_COLORI or not pat.threadlist):
+        colori_rgb(pat, d["file"][".rgb"][1])
     for th in pat.threadlist:                                # fili senza colore fanno cadere write_pes
         if th.color is None:
             th.color = 0x333333
@@ -341,6 +374,13 @@ def pes_bytes(pat):
     return b.getvalue()
 
 
+def _dim(p):
+    try:
+        return os.path.getsize(p)
+    except OSError:
+        return 0
+
+
 def file_in_cartella(cartella, giorni=None):
     """File da ricamo/zip in una cartella (e sottocartelle); `giorni`: solo quelli scaricati di recente."""
     import time
@@ -363,12 +403,91 @@ def file_in_cartella(cartella, giorni=None):
     for p in out:
         e = os.path.splitext(p)[1].lower()
         k = p if e in (".zip", ".xs") else _chiave(os.path.relpath(p, cartella))
-        if k not in migliore or prio(e) < prio(os.path.splitext(migliore[k])[1].lower()):
+        if k not in migliore or scelta(e, _dim(p)) < scelta(os.path.splitext(migliore[k])[1].lower(), _dim(migliore[k])):
             migliore[k] = p
     out = list(migliore.values())
     if len(out) > MAX_CARTELLA:
         raise ValueError(f"più di {MAX_CARTELLA} file in questa cartella: importa una sottocartella alla volta")
     return out
+
+
+class CartellaDisco:
+    """Cartella enorme sul disco (centinaia di migliaia di file sciolti) letta a blocchi come ZipDisco: un solo
+    lavoro in coda invece di un elemento per file. Gli zip dentro la cartella NON sono compresi (vanno in coda a
+    parte). fonte(rel) = prima sottocartella: il filtro «da dove vengono» mostra le raccolte, non i file."""
+
+    def __init__(self, cartella, giorni=None):
+        import time
+        if not os.path.isdir(cartella):
+            raise ValueError("cartella non trovata")
+        self.cartella = cartella
+        limite = time.time() - giorni * 86400 if giorni else 0
+        migliore, col, self.all_dir = {}, {}, {}
+        for dp, dn, fn in os.walk(cartella):
+            dn[:] = [x for x in dn if not x.startswith((".", "$", "_"))]
+            for f in fn:
+                e = os.path.splitext(f)[1].lower()
+                p = os.path.join(dp, f)
+                rel = os.path.relpath(p, cartella).replace("\\", "/")
+                if e in COLORI_ESTERNI:
+                    col[_chiave(rel)] = p
+                    continue
+                if e in ALLEGATI:
+                    self.all_dir.setdefault(_dir(rel), []).append((rel, p))
+                    continue
+                if e not in FORMATI:
+                    continue
+                try:
+                    if limite and os.path.getmtime(p) < limite:
+                        continue
+                    dim = os.path.getsize(p)
+                except OSError:
+                    continue
+                k = _chiave(rel)
+                if k not in migliore or scelta(e, dim) < scelta(migliore[k][2], migliore[k][3]):
+                    migliore[k] = (rel, p, e, dim)
+        self.col = col
+        self.voci = sorted(migliore.values(), key=lambda v: (_dir(v[0]), v[0].lower()))
+        self.totale = len(self.voci)
+
+    @staticmethod
+    def fonte(rel):
+        parti = [x for x in rel.split("/") if x]
+        return parti[0] if len(parti) > 1 else "."
+
+    def blocchi(self, n=BLOCCO):
+        """-> (files [(rel, byte)], allegati [(rel, byte)], voci del blocco)."""
+        for a in range(0, len(self.voci), n):
+            files, allegati, dirs = [], [], set()
+            for rel, p, e, _dim in self.voci[a:a + n]:
+                try:
+                    files.append((rel, open(p, "rb").read()))
+                except OSError:
+                    continue
+                c = self.col.get(_chiave(rel)) if e in SENZA_COLORI else None
+                if c:
+                    try:
+                        files.append((os.path.relpath(c, self.cartella).replace("\\", "/"), open(c, "rb").read()))
+                    except OSError:
+                        pass
+                d = _dir(rel)
+                for _ in range(3):
+                    dirs.add(d)
+                    if "/" not in d:
+                        break
+                    d = d.rsplit("/", 1)[0]
+            tot = 0
+            for d in sorted(dirs):
+                for rel, p in self.all_dir.get(d, []):
+                    try:
+                        dim = os.path.getsize(p)
+                        if not 0 < dim <= MAX_ALLEGATO or tot + dim > MAX_ALLEGATI:
+                            continue
+                        allegati.append((rel, open(p, "rb").read()))
+                        tot += dim
+                    except OSError:
+                        pass
+            yield files, allegati, len(self.voci[a:a + n])
 
 
 class ZipDisco:
@@ -382,17 +501,20 @@ class ZipDisco:
         except zipfile.BadZipFile:
             raise ValueError("zip rovinato o incompleto (si sta ancora scaricando?)")
         self.base = os.path.splitext(os.path.basename(nome_rel))[0]
-        migliore, self.all_dir = {}, {}
+        migliore, self.all_dir, self.col = {}, {}, {}
         for i in self.z.infolist():
             e = os.path.splitext(i.filename)[1].lower()
             if i.is_dir() or "__macosx" in i.filename.lower():
+                continue
+            if e in COLORI_ESTERNI:
+                self.col[_chiave(i.filename)] = i
                 continue
             if e in ALLEGATI and 0 < i.file_size <= MAX_ALLEGATO:
                 self.all_dir.setdefault(_dir(i.filename), []).append(i)
             if e not in ACCETTATI:
                 continue
             k = i.filename if e in (".zip", ".xs") else _chiave(i.filename)
-            if k not in migliore or prio(e) < prio(os.path.splitext(migliore[k].filename)[1].lower()):
+            if k not in migliore or scelta(e, i.file_size) < scelta(os.path.splitext(migliore[k].filename)[1].lower(), migliore[k].file_size):
                 migliore[k] = i
         self.voci = sorted(migliore.values(), key=lambda i: (_dir(i.filename), i.filename.lower()))
         self.totale = len(self.voci)
@@ -415,6 +537,12 @@ class ZipDisco:
                         pass
                 else:
                     files.append((rel, dati))
+                    c = self.col.get(_chiave(i.filename)) if e in SENZA_COLORI else None
+                    if c is not None:
+                        try:
+                            files.append((self.base + "/" + c.filename, self.z.read(c)))
+                        except Exception:
+                            pass
                 d = _dir(i.filename)
                 for _ in range(3):                            # la sua cartella e due sopra (come assegna_allegati)
                     dirs.add(d)
