@@ -43,70 +43,159 @@
   footer { margin: 50px 0 40px; text-align: center; color: var(--muted); font-size: .9rem; }
   a { color: var(--accent); }
   code { background: var(--soft); padding: 1px 6px; border-radius: 5px; }
+  .lang { position: absolute; top: 14px; right: 18px; }
+  .lang select { font: inherit; font-size: .9rem; padding: 6px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--ink); }
+  body { position: relative; }
 </style>
 </head>
 <body>
+<div class="lang"><select id="lingua" aria-label="Language">
+  <option value="en">🌐 English</option><option value="it">🌐 Italiano</option><option value="fr">🌐 Français</option><option value="es">🌐 Español</option>
+</select></div>
 <div class="wrap">
   <header>
     <img src="img/logo_largo_crema.png" alt="OpenHoop">
-    <h1>Your embroidery designs, finally in order.</h1>
-    <p class="lead">OpenHoop is a <b>free, open-source</b> organizer for machine embroidery designs. Tidy up years of downloads, find any design in seconds, try other thread colours and send it to your machine in the right format.</p>
+    <h1 data-t="h1"></h1>
+    <p class="lead" data-t="lead"></p>
     <div class="cta">
-      <a class="btn main" id="dl" href="https://github.com/lelus78/OpenHoop/releases/latest">⬇️ Download for Windows — free</a>
-      <a class="btn alt" href="https://github.com/lelus78/OpenHoop">View on GitHub</a>
+      <a class="btn main" id="dl" href="https://github.com/lelus78/OpenHoop/releases/latest"></a>
+      <a class="btn alt" href="https://github.com/lelus78/OpenHoop" data-t="gh"></a>
     </div>
-    <p class="small" id="ver">Windows 10/11 · no account · no subscription · English, Italiano, Français, Español</p>
+    <p class="small" id="ver"></p>
   </header>
 
   <div class="demo"><video src="img/demo.mp4" autoplay muted loop playsinline poster="screenshots/library.jpg"></video></div>
-  <p class="small">Search by meaning, open a design, point at a part and click to try another thread. The designs shown were made with OpenHoop's own digitizer.</p>
+  <p class="small" data-t="demo"></p>
 
-  <h2>What it does</h2>
+  <h2 data-t="cosa"></h2>
   <div class="grid">
-    <div class="f"><b>🗂️ Sorts your library</b><span>One file per design, duplicates removed, sorted by theme with thumbnails. Your original files are never moved or changed.</span></div>
-    <div class="f"><b>🔎 Finds anything</b><span>By name, by size («130x180») or by meaning: «sleeping cat», «red roses», «christmas».</span></div>
-    <div class="f"><b>🎨 Try thread colours</b><span>Point at a part of the design and click to try another thread from your brand. Save it as a colour version.</span></div>
-    <div class="f"><b>🧵 Ready for your machine</b><span>PES, JEF, DST, VP3, EXP, XXX straight to the USB stick, with smart resize that recalculates the stitches.</span></div>
-    <div class="f"><b>⏱️ Real numbers</b><span>Real size, stitching time, colours, and how many threads you will trim by hand. Shopping list of missing spools.</span></div>
-    <div class="f"><b>📥 Smart import</b><span>Zips, folders, links: duplicates flagged side by side, instructions and colour charts kept next to the design.</span></div>
-    <div class="f"><b>🛡️ Patch maker & lettering</b><span>Turn any design into a patch, add lettering with 140 embroidery fonts, digitize simple images.</span></div>
-    <div class="f"><b>🔄 Updates itself</b><span>One click when a new version is out. Everything stays on your computer.</span></div>
+    <div class="f" data-t="f1"></div><div class="f" data-t="f2"></div><div class="f" data-t="f3"></div><div class="f" data-t="f4"></div>
+    <div class="f" data-t="f5"></div><div class="f" data-t="f6"></div><div class="f" data-t="f7"></div><div class="f" data-t="f8"></div>
   </div>
 
-  <h2>A look inside</h2>
+  <h2 data-t="dentro"></h2>
   <div class="shots">
-    <figure><img src="screenshots/design_card.jpg" alt="Design card" loading="lazy"><figcaption>Design card: size, time, hand trims, threads</figcaption></figure>
-    <figure><img src="screenshots/duplicates.jpg" alt="Duplicates side by side" loading="lazy"><figcaption>Duplicates side by side before importing</figcaption></figure>
-    <figure><img src="screenshots/patch_maker.jpg" alt="Patch maker" loading="lazy"><figcaption>Patch maker</figcaption></figure>
-    <figure><img src="screenshots/digitizer.jpg" alt="Digitizer" loading="lazy"><figcaption>Digitizer for simple images</figcaption></figure>
+    <figure><img src="screenshots/design_card.jpg" alt="" loading="lazy"><figcaption data-t="c1"></figcaption></figure>
+    <figure><img src="screenshots/duplicates.jpg" alt="" loading="lazy"><figcaption data-t="c2"></figcaption></figure>
+    <figure><img src="screenshots/patch_maker.jpg" alt="" loading="lazy"><figcaption data-t="c3"></figcaption></figure>
+    <figure><img src="screenshots/digitizer.jpg" alt="" loading="lazy"><figcaption data-t="c4"></figcaption></figure>
   </div>
 
-  <h2>Install in 3 steps</h2>
-  <ol class="steps">
-    <li>Download the zip with the green button above and unzip it where you like (for example <code>C:\OpenHoop</code>).</li>
-    <li>Double-click <code>OpenHoop.exe</code>. The first time it installs what it needs (about 8 GB, 15–40 minutes). If Windows says «Windows protected your PC», click <b>More info → Run anyway</b>: the program is new and not signed.</li>
-    <li>Start it from the desktop icon, choose your language, your design folders and your machine, and let it build your tidy library.</li>
-  </ol>
-  <p class="small">Early stage: tested on stitch-outs with a Brother machine (PES). Other machines are supported on paper — <a href="https://github.com/lelus78/OpenHoop/issues">tell us how it went</a>!</p>
+  <h2 data-t="inst"></h2>
+  <ol class="steps"><li data-t="s1"></li><li data-t="s2"></li><li data-t="s3"></li></ol>
+  <p class="small" data-t="beta"></p>
 
-  <div class="it">
-    <b>🇮🇹 In italiano</b> — OpenHoop è un programma <b>gratuito e open source</b> per chi ricama a macchina: mette in ordine migliaia di file da ricamo, li trova per nome, misura o significato, ti fa provare altri colori dei fili direttamente sul disegno ed esporta nel formato della tua macchina. Niente account, niente abbonamenti. <a href="https://github.com/lelus78/OpenHoop/releases/latest">Scaricalo qui</a>.
-  </div>
-
-  <footer>
-    Made by an embroidery hobbyist with the help of AI coding tools · GPL-3.0 ·
-    <a href="https://ko-fi.com/openhoop">☕ Support OpenHoop on Ko-fi</a>
-  </footer>
+  <footer><span data-t="foot"></span> · GPL-3.0 · <a href="https://ko-fi.com/openhoop" data-t="kofi"></a></footer>
 </div>
 <script>
+const ISS = '<a href="https://github.com/lelus78/OpenHoop/issues">';
+const T = {
+en: { h1: "Your embroidery designs, finally in order.",
+  lead: "OpenHoop is a <b>free, open-source</b> organizer for machine embroidery designs. Tidy up years of downloads, find any design in seconds, try other thread colours and send it to your machine in the right format.",
+  dl: "⬇️ Download for Windows — free", dlv: "⬇️ Download OpenHoop {v} for Windows — free", gh: "View on GitHub",
+  ver: "Windows 10/11 · no account · no subscription · English, Italiano, Français, Español", mb: "{m} MB zip",
+  demo: "Search by meaning, open a design, point at a part and click to try another thread. The designs shown were made with OpenHoop's own digitizer.",
+  cosa: "What it does",
+  f1: "<b>🗂️ Sorts your library</b><span>One file per design, duplicates removed, sorted by theme with thumbnails. Your original files are never moved or changed.</span>",
+  f2: "<b>🔎 Finds anything</b><span>By name, by size («130x180») or by meaning: «sleeping cat», «red roses», «christmas».</span>",
+  f3: "<b>🎨 Try thread colours</b><span>Point at a part of the design and click to try another thread from your brand. Save it as a colour version.</span>",
+  f4: "<b>🧵 Ready for your machine</b><span>PES, JEF, DST, VP3, EXP, XXX straight to the USB stick, with smart resize that recalculates the stitches.</span>",
+  f5: "<b>⏱️ Real numbers</b><span>Real size, stitching time, colours, and how many threads you will trim by hand. Shopping list of missing spools.</span>",
+  f6: "<b>📥 Smart import</b><span>Zips, folders, links: duplicates flagged side by side, instructions and colour charts kept next to the design.</span>",
+  f7: "<b>🛡️ Patch maker & lettering</b><span>Turn any design into a patch, add lettering with 140 embroidery fonts, digitize simple images.</span>",
+  f8: "<b>🔄 Updates itself</b><span>One click when a new version is out. Everything stays on your computer.</span>",
+  dentro: "A look inside", c1: "Design card: size, time, hand trims, threads", c2: "Duplicates side by side before importing", c3: "Patch maker", c4: "Digitizer for simple images",
+  inst: "Install in 3 steps",
+  s1: "Download the zip with the green button above and unzip it where you like (for example <code>C:\\OpenHoop</code>).",
+  s2: "Double-click <code>OpenHoop.exe</code>. The first time it installs what it needs (about 8 GB, 15–40 minutes). If Windows says «Windows protected your PC», click <b>More info → Run anyway</b>: the program is new and not signed.",
+  s3: "Start it from the desktop icon, choose your language, your design folders and your machine, and let it build your tidy library.",
+  beta: "Early stage: tested on stitch-outs with a Brother machine (PES). Other machines are supported on paper — " + ISS + "tell us how it went</a>!",
+  foot: "Made by an embroidery hobbyist with the help of AI coding tools", kofi: "☕ Support OpenHoop on Ko-fi" },
+it: { h1: "I tuoi ricami, finalmente in ordine.",
+  lead: "OpenHoop è un programma <b>gratuito e open source</b> per chi ricama a macchina. Mette in ordine anni di download, trova qualsiasi disegno in pochi secondi, ti fa provare altri colori dei fili e lo manda alla tua macchina nel formato giusto.",
+  dl: "⬇️ Scarica per Windows — gratis", dlv: "⬇️ Scarica OpenHoop {v} per Windows — gratis", gh: "Vedi su GitHub",
+  ver: "Windows 10/11 · niente account · niente abbonamenti · Italiano, English, Français, Español", mb: "zip da {m} MB",
+  demo: "Cerca per significato, apri un disegno, punta una parte e fai clic per provare un altro filo. I disegni mostrati sono stati fatti con il digitalizzatore di OpenHoop.",
+  cosa: "Cosa fa",
+  f1: "<b>🗂️ Riordina la libreria</b><span>Un solo file per disegno, niente doppioni, divisi per tema con le miniature. I file originali non vengono mai spostati né modificati.</span>",
+  f2: "<b>🔎 Trova tutto</b><span>Per nome, per misura («130x180») o per significato: «gatto che dorme», «rose rosse», «natale».</span>",
+  f3: "<b>🎨 Prova i colori dei fili</b><span>Punta una parte del disegno e fai clic per provare un altro filo della tua marca. Salvala come versione di colore.</span>",
+  f4: "<b>🧵 Pronto per la tua macchina</b><span>PES, JEF, DST, VP3, EXP, XXX direttamente sulla chiavetta, con il ridimensionamento intelligente che ricalcola i punti.</span>",
+  f5: "<b>⏱️ Numeri veri</b><span>Misura reale, tempo di ricamo, colori e quanti fili taglierai a mano. Lista della spesa dei fili che mancano.</span>",
+  f6: "<b>📥 Importazione furba</b><span>Zip, cartelle, link: i doppioni si vedono affiancati, istruzioni e tabelle colori restano accanto al disegno.</span>",
+  f7: "<b>🛡️ Toppe e scritte</b><span>Trasforma un disegno in toppa, aggiungi scritte con 140 font da ricamo, digitalizza immagini semplici.</span>",
+  f8: "<b>🔄 Si aggiorna da solo</b><span>Un clic quando esce una versione nuova. Tutto resta sul tuo computer.</span>",
+  dentro: "Uno sguardo dentro", c1: "Scheda del disegno: misura, tempo, tagli a mano, fili", c2: "Doppioni affiancati prima di importare", c3: "Creatore di toppe", c4: "Digitalizzatore per immagini semplici",
+  inst: "Installazione in 3 passi",
+  s1: "Scarica lo zip con il pulsante verde qui sopra ed estrailo dove vuoi (per esempio <code>C:\\OpenHoop</code>).",
+  s2: "Doppio clic su <code>OpenHoop.exe</code>. La prima volta installa quello che serve (circa 8 GB, 15–40 minuti). Se Windows dice «Windows ha protetto il PC», fai clic su <b>Ulteriori informazioni → Esegui comunque</b>: il programma è nuovo e non firmato.",
+  s3: "Avvialo dall'icona sul desktop, scegli lingua, cartelle dei disegni e macchina, e lascia che costruisca la tua libreria in ordine.",
+  beta: "Progetto agli inizi: provato ricamando con una Brother (PES). Le altre macchine sono supportate sulla carta — " + ISS + "raccontaci com'è andata</a>!",
+  foot: "Fatto da un appassionato di ricamo con l'aiuto di strumenti di programmazione con l'IA", kofi: "☕ Sostieni OpenHoop su Ko-fi" },
+fr: { h1: "Vos motifs de broderie, enfin en ordre.",
+  lead: "OpenHoop est un organiseur <b>gratuit et open source</b> pour la broderie machine. Rangez des années de téléchargements, retrouvez n'importe quel motif en quelques secondes, essayez d'autres couleurs de fil et envoyez-le à votre machine dans le bon format.",
+  dl: "⬇️ Télécharger pour Windows — gratuit", dlv: "⬇️ Télécharger OpenHoop {v} pour Windows — gratuit", gh: "Voir sur GitHub",
+  ver: "Windows 10/11 · sans compte · sans abonnement · Français, English, Italiano, Español", mb: "zip de {m} Mo",
+  demo: "Cherchez par le sens, ouvrez un motif, pointez une partie et cliquez pour essayer un autre fil. Les motifs montrés ont été créés avec le numériseur d'OpenHoop.",
+  cosa: "Ce qu'il fait",
+  f1: "<b>🗂️ Range votre bibliothèque</b><span>Un seul fichier par motif, doublons supprimés, classés par thème avec miniatures. Vos fichiers d'origine ne sont jamais déplacés ni modifiés.</span>",
+  f2: "<b>🔎 Retrouve tout</b><span>Par nom, par taille («130x180») ou par le sens : «chat qui dort», «roses rouges», «noël».</span>",
+  f3: "<b>🎨 Essayez les couleurs</b><span>Pointez une partie du motif et cliquez pour essayer un autre fil de votre marque. Enregistrez-la comme version de couleur.</span>",
+  f4: "<b>🧵 Prêt pour votre machine</b><span>PES, JEF, DST, VP3, EXP, XXX directement sur la clé USB, avec un redimensionnement intelligent qui recalcule les points.</span>",
+  f5: "<b>⏱️ De vrais chiffres</b><span>Taille réelle, temps de broderie, couleurs et nombre de fils à couper à la main. Liste des bobines manquantes.</span>",
+  f6: "<b>📥 Import malin</b><span>Zips, dossiers, liens : doublons affichés côte à côte, instructions et tableaux de couleurs gardés à côté du motif.</span>",
+  f7: "<b>🛡️ Écussons et lettrage</b><span>Transformez un motif en écusson, ajoutez du texte avec 140 polices de broderie, numérisez des images simples.</span>",
+  f8: "<b>🔄 Se met à jour tout seul</b><span>Un clic quand une nouvelle version sort. Tout reste sur votre ordinateur.</span>",
+  dentro: "Un aperçu", c1: "Fiche du motif : taille, temps, coupes à la main, fils", c2: "Doublons côte à côte avant l'import", c3: "Créateur d'écussons", c4: "Numériseur pour images simples",
+  inst: "Installation en 3 étapes",
+  s1: "Téléchargez le zip avec le bouton vert ci-dessus et décompressez-le où vous voulez (par exemple <code>C:\\OpenHoop</code>).",
+  s2: "Double-cliquez sur <code>OpenHoop.exe</code>. La première fois, il installe ce qu'il faut (environ 8 Go, 15–40 minutes). Si Windows affiche «Windows a protégé votre ordinateur», cliquez sur <b>Informations complémentaires → Exécuter quand même</b> : le programme est nouveau et non signé.",
+  s3: "Lancez-le depuis l'icône du bureau, choisissez la langue, vos dossiers de motifs et votre machine, et laissez-le construire votre bibliothèque.",
+  beta: "Projet tout neuf : testé en brodant avec une Brother (PES). Les autres machines sont prises en charge sur le papier — " + ISS + "dites-nous comment ça s'est passé</a> !",
+  foot: "Créé par un passionné de broderie avec l'aide d'outils de programmation à base d'IA", kofi: "☕ Soutenir OpenHoop sur Ko-fi" },
+es: { h1: "Tus diseños de bordado, por fin en orden.",
+  lead: "OpenHoop es un organizador <b>gratuito y de código abierto</b> para bordado a máquina. Ordena años de descargas, encuentra cualquier diseño en segundos, prueba otros colores de hilo y envíalo a tu máquina en el formato correcto.",
+  dl: "⬇️ Descargar para Windows — gratis", dlv: "⬇️ Descargar OpenHoop {v} para Windows — gratis", gh: "Ver en GitHub",
+  ver: "Windows 10/11 · sin cuenta · sin suscripción · Español, English, Italiano, Français", mb: "zip de {m} MB",
+  demo: "Busca por significado, abre un diseño, señala una parte y haz clic para probar otro hilo. Los diseños mostrados se hicieron con el digitalizador de OpenHoop.",
+  cosa: "Qué hace",
+  f1: "<b>🗂️ Ordena tu biblioteca</b><span>Un solo archivo por diseño, sin duplicados, ordenados por tema con miniaturas. Tus archivos originales nunca se mueven ni se modifican.</span>",
+  f2: "<b>🔎 Lo encuentra todo</b><span>Por nombre, por tamaño («130x180») o por significado: «gato durmiendo», «rosas rojas», «navidad».</span>",
+  f3: "<b>🎨 Prueba colores de hilo</b><span>Señala una parte del diseño y haz clic para probar otro hilo de tu marca. Guárdalo como versión de color.</span>",
+  f4: "<b>🧵 Listo para tu máquina</b><span>PES, JEF, DST, VP3, EXP, XXX directo al USB, con redimensionado inteligente que recalcula las puntadas.</span>",
+  f5: "<b>⏱️ Números reales</b><span>Tamaño real, tiempo de bordado, colores y cuántos hilos cortarás a mano. Lista de compra de los hilos que faltan.</span>",
+  f6: "<b>📥 Importación inteligente</b><span>Zips, carpetas, enlaces: duplicados lado a lado, instrucciones y cartas de colores junto al diseño.</span>",
+  f7: "<b>🛡️ Parches y letras</b><span>Convierte un diseño en parche, añade letras con 140 fuentes de bordado, digitaliza imágenes sencillas.</span>",
+  f8: "<b>🔄 Se actualiza solo</b><span>Un clic cuando sale una versión nueva. Todo se queda en tu ordenador.</span>",
+  dentro: "Un vistazo", c1: "Ficha del diseño: tamaño, tiempo, cortes a mano, hilos", c2: "Duplicados lado a lado antes de importar", c3: "Creador de parches", c4: "Digitalizador para imágenes sencillas",
+  inst: "Instalación en 3 pasos",
+  s1: "Descarga el zip con el botón verde de arriba y descomprímelo donde quieras (por ejemplo <code>C:\\OpenHoop</code>).",
+  s2: "Doble clic en <code>OpenHoop.exe</code>. La primera vez instala lo necesario (unos 8 GB, 15–40 minutos). Si Windows dice «Windows protegió su PC», haz clic en <b>Más información → Ejecutar de todas formas</b>: el programa es nuevo y no está firmado.",
+  s3: "Ábrelo desde el icono del escritorio, elige idioma, carpetas de diseños y máquina, y deja que construya tu biblioteca ordenada.",
+  beta: "Proyecto recién nacido: probado bordando con una Brother (PES). Las demás máquinas son compatibles sobre el papel — " + ISS + "cuéntanos cómo te fue</a>!",
+  foot: "Hecho por un aficionado al bordado con la ayuda de herramientas de programación con IA", kofi: "☕ Apoya OpenHoop en Ko-fi" }
+};
+let REL = null, L = "en";
+function applica(l) {
+  L = T[l] ? l : "en"; const t = T[L];
+  document.documentElement.lang = L; document.getElementById("lingua").value = L;
+  document.querySelectorAll("[data-t]").forEach(e => { e.innerHTML = t[e.dataset.t]; });
+  const a = document.getElementById("dl"), v = document.getElementById("ver");
+  if (REL) {
+    a.href = REL.url; a.textContent = t.dlv.replace("{v}", REL.v);
+    v.textContent = t.mb.replace("{m}", REL.mb) + " · " + t.ver;
+  } else { a.textContent = t.dl; v.textContent = t.ver; }
+}
+const scelta = new URLSearchParams(location.search).get("lang") || localStorage.getItem("oh_lang")
+  || (navigator.languages || [navigator.language || "en"]).map(x => x.slice(0, 2).toLowerCase()).find(x => T[x]) || "en";
+applica(scelta);
+document.getElementById("lingua").onchange = e => { localStorage.setItem("oh_lang", e.target.value); applica(e.target.value); };
 // diretto allo zip dell'ultima versione (se GitHub risponde), altrimenti la pagina delle release
 fetch("https://api.github.com/repos/lelus78/OpenHoop/releases/latest").then(r => r.json()).then(r => {
   const z = (r.assets || []).find(a => /\.zip$/.test(a.name));
   if (!z) return;
-  const a = document.getElementById("dl");
-  a.href = z.browser_download_url;
-  a.textContent = `⬇️ Download OpenHoop ${r.tag_name.replace(/^v/, "")} for Windows — free`;
-  document.getElementById("ver").textContent = `${(z.size / 1048576).toFixed(1)} MB zip · Windows 10/11 · no account · no subscription · English, Italiano, Français, Español`;
+  REL = { url: z.browser_download_url, v: r.tag_name.replace(/^v/, ""), mb: (z.size / 1048576).toFixed(1) };
+  applica(L);
 }).catch(() => {});
 </script>
 </body>
