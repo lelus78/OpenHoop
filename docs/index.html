@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpenHoop – free embroidery design organizer for Windows (PES, DST, JEF, VP3)</title>
+<meta name="description" content="Free, open-source embroidery software for Windows. Organize thousands of machine embroidery designs, find them by meaning, try other thread colours, remove duplicates and export PES, JEF, DST, VP3, EXP, XXX to your machine. No account, no subscription.">
+<meta property="og:title" content="OpenHoop – free embroidery design organizer">
+<meta property="og:description" content="Tidy up years of embroidery downloads, find any design in seconds, try thread colours and send it to your machine. Free and open source.">
+<meta property="og:image" content="https://lelus78.github.io/OpenHoop/img/copertina_larga.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="img/favicon.png">
+<style>
+  :root { --bg: #f7f3ec; --ink: #1f2a26; --muted: #5d6a64; --accent: #2c6a56; --soft: #e1eee8; --line: #e4ddd1; --card: #fffdf9; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 17px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); background: var(--bg); }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 22px; }
+  header { padding: 38px 0 10px; text-align: center; }
+  header img { width: min(420px, 80vw); height: auto; }
+  h1 { font-size: clamp(1.7rem, 4vw, 2.6rem); line-height: 1.15; margin: 18px 0 10px; letter-spacing: -.01em; }
+  .lead { font-size: 1.15rem; color: var(--muted); max-width: 680px; margin: 0 auto; }
+  .cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 26px 0 8px; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 14px 24px; border-radius: 12px; font-weight: 700; text-decoration: none; }
+  .btn.main { background: var(--accent); color: #fff; box-shadow: 0 8px 24px #2c6a5640; }
+  .btn.main:hover { filter: brightness(1.08); }
+  .btn.alt { background: var(--card); color: var(--ink); border: 1px solid var(--line); }
+  .small { font-size: .86rem; color: var(--muted); text-align: center; }
+  .demo { margin: 30px auto 10px; border-radius: 16px; overflow: hidden; box-shadow: 0 20px 60px #0002; border: 1px solid var(--line); background: #fff; }
+  .demo video { display: block; width: 100%; height: auto; }
+  h2 { font-size: 1.5rem; margin: 54px 0 18px; text-align: center; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 16px; }
+  .f { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; }
+  .f b { display: block; font-size: 1.04rem; margin-bottom: 4px; }
+  .f span { color: var(--muted); font-size: .95rem; }
+  .shots { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+  .shots figure { margin: 0; }
+  .shots img { width: 100%; border-radius: 12px; border: 1px solid var(--line); display: block; }
+  .shots figcaption { font-size: .9rem; color: var(--muted); margin-top: 6px; text-align: center; }
+  ol.steps { max-width: 640px; margin: 0 auto; padding-left: 1.2em; }
+  ol.steps li { margin: 8px 0; }
+  .it { background: var(--soft); border-radius: 14px; padding: 18px 22px; margin-top: 50px; }
+  footer { margin: 50px 0 40px; text-align: center; color: var(--muted); font-size: .9rem; }
+  a { color: var(--accent); }
+  code { background: var(--soft); padding: 1px 6px; border-radius: 5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img src="img/logo_largo_crema.png" alt="OpenHoop">
+    <h1>Your embroidery designs, finally in order.</h1>
+    <p class="lead">OpenHoop is a <b>free, open-source</b> organizer for machine embroidery designs. Tidy up years of downloads, find any design in seconds, try other thread colours and send it to your machine in the right format.</p>
+    <div class="cta">
+      <a class="btn main" id="dl" href="https://github.com/lelus78/OpenHoop/releases/latest">⬇️ Download for Windows — free</a>
+      <a class="btn alt" href="https://github.com/lelus78/OpenHoop">View on GitHub</a>
+    </div>
+    <p class="small" id="ver">Windows 10/11 · no account · no subscription · English, Italiano, Français, Español</p>
+  </header>
+
+  <div class="demo"><video src="img/demo.mp4" autoplay muted loop playsinline poster="screenshots/library.jpg"></video></div>
+  <p class="small">Search by meaning, open a design, point at a part and click to try another thread. The designs shown were made with OpenHoop's own digitizer.</p>
+
+  <h2>What it does</h2>
+  <div class="grid">
+    <div class="f"><b>🗂️ Sorts your library</b><span>One file per design, duplicates removed, sorted by theme with thumbnails. Your original files are never moved or changed.</span></div>
+    <div class="f"><b>🔎 Finds anything</b><span>By name, by size («130x180») or by meaning: «sleeping cat», «red roses», «christmas».</span></div>
+    <div class="f"><b>🎨 Try thread colours</b><span>Point at a part of the design and click to try another thread from your brand. Save it as a colour version.</span></div>
+    <div class="f"><b>🧵 Ready for your machine</b><span>PES, JEF, DST, VP3, EXP, XXX straight to the USB stick, with smart resize that recalculates the stitches.</span></div>
+    <div class="f"><b>⏱️ Real numbers</b><span>Real size, stitching time, colours, and how many threads you will trim by hand. Shopping list of missing spools.</span></div>
+    <div class="f"><b>📥 Smart import</b><span>Zips, folders, links: duplicates flagged side by side, instructions and colour charts kept next to the design.</span></div>
+    <div class="f"><b>🛡️ Patch maker & lettering</b><span>Turn any design into a patch, add lettering with 140 embroidery fonts, digitize simple images.</span></div>
+    <div class="f"><b>🔄 Updates itself</b><span>One click when a new version is out. Everything stays on your computer.</span></div>
+  </div>
+
+  <h2>A look inside</h2>
+  <div class="shots">
+    <figure><img src="screenshots/design_card.jpg" alt="Design card" loading="lazy"><figcaption>Design card: size, time, hand trims, threads</figcaption></figure>
+    <figure><img src="screenshots/duplicates.jpg" alt="Duplicates side by side" loading="lazy"><figcaption>Duplicates side by side before importing</figcaption></figure>
+    <figure><img src="screenshots/patch_maker.jpg" alt="Patch maker" loading="lazy"><figcaption>Patch maker</figcaption></figure>
+    <figure><img src="screenshots/digitizer.jpg" alt="Digitizer" loading="lazy"><figcaption>Digitizer for simple images</figcaption></figure>
+  </div>
+
+  <h2>Install in 3 steps</h2>
+  <ol class="steps">
+    <li>Download the zip with the green button above and unzip it where you like (for example <code>C:\OpenHoop</code>).</li>
+    <li>Double-click <code>OpenHoop.exe</code>. The first time it installs what it needs (about 8 GB, 15–40 minutes). If Windows says «Windows protected your PC», click <b>More info → Run anyway</b>: the program is new and not signed.</li>
+    <li>Start it from the desktop icon, choose your language, your design folders and your machine, and let it build your tidy library.</li>
+  </ol>
+  <p class="small">Early stage: tested on stitch-outs with a Brother machine (PES). Other machines are supported on paper — <a href="https://github.com/lelus78/OpenHoop/issues">tell us how it went</a>!</p>
+
+  <div class="it">
+    <b>🇮🇹 In italiano</b> — OpenHoop è un programma <b>gratuito e open source</b> per chi ricama a macchina: mette in ordine migliaia di file da ricamo, li trova per nome, misura o significato, ti fa provare altri colori dei fili direttamente sul disegno ed esporta nel formato della tua macchina. Niente account, niente abbonamenti. <a href="https://github.com/lelus78/OpenHoop/releases/latest">Scaricalo qui</a>.
+  </div>
+
+  <footer>
+    Made by an embroidery hobbyist with the help of AI coding tools · GPL-3.0 ·
+    <a href="https://ko-fi.com/openhoop">☕ Support OpenHoop on Ko-fi</a>
+  </footer>
+</div>
+<script>
+// diretto allo zip dell'ultima versione (se GitHub risponde), altrimenti la pagina delle release
+fetch("https://api.github.com/repos/lelus78/OpenHoop/releases/latest").then(r => r.json()).then(r => {
+  const z = (r.assets || []).find(a => /\.zip$/.test(a.name));
+  if (!z) return;
+  const a = document.getElementById("dl");
+  a.href = z.browser_download_url;
+  a.textContent = `⬇️ Download OpenHoop ${r.tag_name.replace(/^v/, "")} for Windows — free`;
+  document.getElementById("ver").textContent = `${(z.size / 1048576).toFixed(1)} MB zip · Windows 10/11 · no account · no subscription · English, Italiano, Français, Español`;
+}).catch(() => {});
+</script>
+</body>
+</html>
