@@ -4,7 +4,11 @@
 Tidy up years of downloads, find any design in seconds, and send it to your machine in the right format.<br>
 <i>English · Italiano · Français · Español</i></p>
 
-<p align="center"><a href="https://ko-fi.com/openhoop">☕ Support OpenHoop on Ko-fi</a></p>
+<p align="center"><a href="https://github.com/lelus78/OpenHoop/releases/latest"><b>⬇️ Download for Windows (free)</b></a> ·
+<a href="https://ko-fi.com/openhoop">☕ Support OpenHoop on Ko-fi</a></p>
+
+<p align="center"><img src="docs/screenshots/demo.gif" alt="Search «christmas», open a design, point at a part and click to try another thread: the reindeer's antlers turn gold" width="860"><br>
+<sub>Search by meaning, open a design, point at a part and click to try another thread. All designs shown were made with OpenHoop's own digitizer.</sub></p>
 
 ---
 
@@ -65,7 +69,7 @@ From version 1.0.1 OpenHoop tells you when a new version is out and **updates it
 | <img src="docs/screenshots/patch_maker.jpg" alt="Patch maker" width="400"> | <img src="docs/screenshots/digitizer.jpg" alt="Digitizer" width="400"> |
 | **Stitch-by-stitch simulation** | **Settings: folders, machine, hoops** |
 | <img src="docs/screenshots/simulation.jpg" alt="Stitch simulation" width="400"> | <img src="docs/screenshots/settings.jpg" alt="Settings" width="400"> |
-| **Your library, sorted by theme** | **Import: filters, attachments, duplicates flagged** |
+| **Your library: search by meaning** | **Import: filters, attachments, duplicates flagged** |
 | <img src="docs/screenshots/library.jpg" alt="Library grid" width="400"> | <img src="docs/screenshots/import.jpg" alt="Import page with filters" width="400"> |
 | **Duplicates side by side** | **Colour versions of the same design** |
 | <img src="docs/screenshots/duplicates.jpg" alt="Duplicate comparison" width="400"> | <img src="docs/screenshots/colour_versions.jpg" alt="Colour versions in the design card" width="400"> |
