@@ -32,6 +32,32 @@ def _scurisci(rgb, k):
     return tuple(max(0, int(c * (1 - k))) for c in rgb)
 
 
+def mappa(pat, size=600):
+    """Immagine «invisibile» con la stessa inquadratura di render(): ogni blocco di colore ha il suo codice
+    (indice + 1 nei 24 bit RGB, 0 = vuoto). La pagina legge il pixel sotto il mouse e sa quale parte è.
+    Linee senza sfumature (colori esatti) e un po' più spesse del filo, così è facile puntarle."""
+    x0, y0, x1, y1 = (float(v) for v in pat.bounds())
+    S = size
+    margine = 0.06 * S
+    k = (S - 2 * margine) / max(x1 - x0, y1 - y0, 1)
+    ox = margine + ((S - 2 * margine) - (x1 - x0) * k) / 2
+    oy = margine + ((S - 2 * margine) - (y1 - y0) * k) / 2
+    spess = max(2, int(FILO_MM * 10 * k * 1.6))
+    img = Image.new("RGB", (S, S), (0, 0, 0))
+    d = ImageDraw.Draw(img)
+    for n, (blocco, _th) in enumerate(pat.get_as_colorblocks()):
+        cod = n + 1
+        col = ((cod >> 16) & 255, (cod >> 8) & 255, cod & 255)
+        prev = None
+        for st in blocco:
+            cmd = st[2] & 0xFF
+            q = (ox + (st[0] - x0) * k, oy + (st[1] - y0) * k)
+            if cmd == 0 and prev is not None and math.dist(prev, q) > 0.2:
+                d.line([prev, q], fill=col, width=spess)
+            prev = q if cmd in (0, 1) else None
+    return img
+
+
 def render(pat, size=320, ss=3, sfondo=True):
     """pat = pyembroidery.EmbPattern. ss = supersampling (disegna ss volte più grande poi riduce)."""
     x0, y0, x1, y1 = (float(v) for v in pat.bounds())          # anche se i punti sono numeri numpy

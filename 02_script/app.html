@@ -191,6 +191,23 @@ main { min-width: 0; overflow-y: auto; display: flex; flex-direction: column; }
 .filo .n { color: var(--muted); font-size: .75rem; font-variant-numeric: tabular-nums; text-align: right; }
 .filo .sw { width: 34px; height: 22px; border-radius: 6px; border: 1px solid #0002; position: relative; overflow: hidden; }
 .filo .sw i { position: absolute; inset: 0 50% 0 0; }
+#pFili .filo .sw { cursor: pointer; }
+#pFili .filo .sw:hover { outline: 2px solid var(--accent); outline-offset: 1px; }
+#pFili .filo.prova { background: var(--accent-soft); }
+#pFili .filo.evid { outline: 2px solid var(--accent); outline-offset: -2px; }
+.det .pv canvas.evid { position: absolute; pointer-events: none; border-radius: 10px; }
+.dtip { position: fixed; z-index: 45; pointer-events: none; background: var(--ink); color: var(--surface); border-radius: 8px; padding: 6px 9px; font-size: .78rem; line-height: 1.35; box-shadow: 0 6px 20px #0004; max-width: 260px; }
+.dtip small { opacity: .75; }
+.prova-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 8px 10px; border-radius: 10px; background: var(--amber-soft); color: var(--amber); font-weight: 700; font-size: .82rem; margin-bottom: 6px; }
+.prova-bar .btn { height: 28px; font-size: .78rem; }
+.filo-pick { position: fixed; z-index: 40; width: 330px; max-height: 420px; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 12px 40px #0005; }
+.filo-pick header { display: flex; gap: 8px; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--line); font-weight: 700; font-size: .85rem; }
+.filo-pick input[type=search] { margin: 8px 12px 4px; padding: 6px 9px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+.filo-pick .lista { overflow-y: auto; padding: 4px 6px 8px; }
+.filo-pick button.f { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 8px; align-items: center; width: 100%; border: 0; background: none; padding: 5px 6px; border-radius: 7px; cursor: pointer; text-align: left; font: inherit; font-size: .8rem; color: var(--text); }
+.filo-pick button.f:hover { background: var(--surface-2); }
+.filo-pick button.f i { width: 26px; height: 18px; border-radius: 5px; border: 1px solid #0002; }
+.filo-pick .ho { color: var(--accent); font-size: .72rem; font-weight: 700; }
 .filo .tx { min-width: 0; }
 .filo .tx b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .filo .tx small { color: var(--muted); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1519,6 +1536,7 @@ $("next").onclick = () => { if ((pag + 1) * PER < tot) { pag++; carica(); } };
 let vistaTel = false;
 async function dettaglio(i) {
   cur = await api("/api/dettaglio?i=" + i);
+  PROVA.i = cur.i; PROVA.col = {}; PROVA.nomi = {};      // scheda riaperta: i colori in prova non salvati si azzerano
   $("dNome").textContent = cur.nome;
   $("dTema").textContent = cur.tema.toLowerCase().replace(/^./, c => c.toUpperCase());
   $("dMis").innerHTML = fMM(cur.w, cur.h);
@@ -1590,17 +1608,144 @@ $("dTabs").onclick = e => {
   document.querySelectorAll("#dTabs button").forEach(x => x.classList.toggle("on", x === b));
   $("pFili").hidden = b.dataset.t !== "fili"; $("pMis").hidden = b.dataset.t !== "mis"; $("pRacc").hidden = b.dataset.t !== "racc"; $("pDiario").hidden = b.dataset.t !== "diario";
 };
+// ---- prova colori nella scheda: clic sul quadratino di un filo -> un altro filo, anteprima subito, poi salva ----
+const PROVA = { i: null, col: {}, nomi: {}, tab: {} };
+function provaParam() { return Object.entries(PROVA.col).map(([k, h]) => `${k}:${h.slice(1)}`).join(","); }
+function provaAnteprima() {
+  const q = provaParam();
+  if (vistaTel) { vistaTel = false; mostraVista(); }
+  $("dImg").src = "/api/anteprima?v=" + AVV + "&i=" + cur.i + (q ? "&col=" + q : (COLV[cur.i] ? "&c=" + COLV[cur.i] : ""));
+  $("dCar").textContent = q ? t("Prova colori") : t("Alta definizione");
+}
+async function filoTabella(marca) {
+  if (!PROVA.tab[marca]) PROVA.tab[marca] = (await api("/api/fili?marca=" + encodeURIComponent(marca))).fili;
+  return PROVA.tab[marca];
+}
+function distRgb(a, b) {
+  const p = [1, 3, 5].map(k => parseInt(a.slice(k, k + 2), 16)), q = [1, 3, 5].map(k => parseInt(b.slice(k, k + 2), 16));
+  const r = (p[0] + q[0]) / 2;
+  return Math.sqrt((2 + r / 256) * (p[0] - q[0]) ** 2 + 4 * (p[1] - q[1]) ** 2 + (2 + (255 - r) / 256) * (p[2] - q[2]) ** 2);
+}
+async function filoPick(n, el) {
+  document.querySelector(".filo-pick")?.remove();
+  const f = cur.fili[n], marca = (cur.kit || [])[0] || f.marca;
+  const tab = await filoTabella(marca).catch(() => []);
+  const box = document.createElement("div");
+  box.className = "filo-pick";
+  box.innerHTML = `<header><span style="flex:1">${t("Filo")} ${n + 1}: ${t("scegli un altro colore")}</span><button class="btn ico ghost" data-x>${ico("x")}</button></header>
+    <input type="search" placeholder="${t("cerca numero o nome…")}"><label class="hint" style="padding:0 12px"><input type="checkbox" data-tutti> ${t("anche i fili che non ho")}</label><div class="lista"></div>`;
+  document.body.appendChild(box);
+  const r = el.getBoundingClientRect();
+  box.style.left = Math.max(8, Math.min(innerWidth - 340, r.left - 340)) + "px";
+  box.style.top = Math.max(8, Math.min(innerHeight - 430, r.top - 40)) + "px";
+  const lista = () => {
+    const q = box.querySelector("input[type=search]").value.trim().toLowerCase(), tutti = box.querySelector("[data-tutti]").checked;
+    const v = tab.filter(x => (tutti || x.ho) && (!q || `${x.num} ${x.nome}`.toLowerCase().includes(q)))
+      .map(x => [distRgb(f.hex, x.hex), x]).sort((a, b) => a[0] - b[0]).slice(0, 80).map(x => x[1]);
+    box.querySelector(".lista").innerHTML = v.map(x => `<button class="f" data-h="${esc(x.hex)}" data-nome="${esc(x.num + " · " + x.nome)}"><i style="background:${esc(x.hex)}"></i><span>${esc(x.num)} · ${esc(x.nome)}</span>${x.ho ? `<span class="ho">${t("Ce l'ho")}</span>` : ""}</button>`).join("")
+      || `<p class="hint" style="padding:8px">${t("Nessun filo: spunta «anche i fili che non ho»")}</p>`;
+  };
+  if (!tab.some(x => x.ho)) box.querySelector("[data-tutti]").checked = true;
+  lista();
+  box.querySelector("input[type=search]").oninput = lista;
+  box.querySelector("[data-tutti]").onchange = lista;
+  box.onclick = e => {
+    if (e.target.closest("[data-x]")) { box.remove(); return; }
+    const b = e.target.closest("button.f"); if (!b) return;
+    PROVA.col[n] = b.dataset.h; PROVA.nomi[n] = `${marca} ${b.dataset.nome}`;
+    box.remove(); disegnaFili(); provaAnteprima();
+  };
+}
+document.addEventListener("mousedown", e => { const b = document.querySelector(".filo-pick"); if (b && !b.contains(e.target) && !e.target.closest("#pFili .sw")) b.remove(); });
+document.addEventListener("click", async e => {
+  const sw = e.target.closest("#pFili .filo .sw");
+  if (sw) { filoPick(+sw.closest(".filo").dataset.n, sw); return; }
+  if (e.target.closest("[data-prova-via]")) { PROVA.col = {}; PROVA.nomi = {}; disegnaFili(); provaAnteprima(); return; }
+  if (e.target.closest("[data-prova-salva]")) {
+    const i = cur.i;
+    try { await api("/api/colori/personalizza", { i, col: PROVA.col, nomi: PROVA.nomi }); }
+    catch (err) { toast(t("Non riuscito:") + " " + err.message); return; }
+    PROVA.col = {}; PROVA.nomi = {}; COLV[i] = Date.now();
+    toast(t("Salvati come nuova versione dei colori: la trovi sotto «Colori»"));
+    document.querySelectorAll(`img[src^="/img/${i}.webp"]`).forEach(im => im.src = `/img/${i}.webp?v=${AVV}&c=${COLV[i]}`);
+    dettaglio(i);
+  }
+});
+// ---- parti del disegno sotto il mouse: mappa con un codice per blocco (stessa inquadratura dell'anteprima) ----
+const MAPPA = { i: null, dati: null, W: 600, sotto: -1, carica: null };
+function mappaCarica() {
+  if (MAPPA.i === cur.i && (MAPPA.dati || MAPPA.carica)) return MAPPA.carica;
+  MAPPA.i = cur.i; MAPPA.dati = null; MAPPA.sotto = -1; mappaEvidenzia(-1);
+  const i = cur.i;
+  MAPPA.carica = fetch(`/api/mappa?i=${i}&size=${MAPPA.W}&v=${AVV}`).then(r => r.ok ? r.body.pipeThrough(new DecompressionStream("deflate")) : Promise.reject())
+    .then(st => new Response(st).arrayBuffer()).then(b => {
+    if (MAPPA.i !== i) return;
+    MAPPA.dati = new Uint16Array(b);                        // un codice per pixel (blocco + 1, 0 = vuoto)
+  }).catch(() => {}).finally(() => { MAPPA.carica = null; });
+  return MAPPA.carica;
+}
+function mappaIndice(e) {
+  if (!MAPPA.dati) return -1;
+  const r = $("dImg").getBoundingClientRect(), W = MAPPA.W;
+  const px = Math.floor((e.clientX - r.left) / r.width * W), py = Math.floor((e.clientY - r.top) / r.height * W);
+  if (px < 0 || py < 0 || px >= W || py >= W) return -1;
+  return MAPPA.dati[py * W + px] - 1;
+}
+function mappaEvidenzia(n) {
+  let cv = $("dEvid");
+  const img = $("dImg");
+  if (!cv) { cv = document.createElement("canvas"); cv.id = "dEvid"; cv.className = "evid"; img.after(cv); }
+  document.querySelectorAll("#pFili .filo.evid").forEach(x => x.classList.remove("evid"));
+  let tip = $("dTip");
+  if (n < 0 || !MAPPA.dati || MAPPA.i !== cur.i) { cv.hidden = true; if (tip) tip.hidden = true; img.style.cursor = ""; return; }
+  cv.hidden = false; img.style.cursor = "pointer";
+  cv.style.left = img.offsetLeft + "px"; cv.style.top = img.offsetTop + "px";
+  cv.style.width = img.offsetWidth + "px"; cv.style.height = img.offsetHeight + "px";
+  const W = MAPPA.W; cv.width = cv.height = W;
+  const x = cv.getContext("2d"), out = x.createImageData(W, W), d = MAPPA.dati, o = out.data, cod = n + 1;
+  for (let k = 0; k < d.length; k++) {                        // tutto un po' più scuro tranne la parte puntata
+    if (d[k] !== cod) o[k * 4 + 3] = 105;
+  }
+  x.putImageData(out, 0, 0);
+  const row = document.querySelector(`#pFili .filo[data-n="${n}"]`);
+  if (row) { row.classList.add("evid"); row.scrollIntoView({ block: "nearest" }); }
+}
+$("dImg").addEventListener("mousemove", e => {
+  if (vistaTel || cur.scala !== 100) return;
+  if (MAPPA.i !== cur.i || !MAPPA.dati) { mappaCarica(); return; }      // disegno cambiato: mappa nuova
+  const n = mappaIndice(e);
+  let tip = $("dTip");
+  if (!tip) { tip = document.createElement("div"); tip.id = "dTip"; tip.className = "dtip"; document.body.appendChild(tip); }
+  if (n !== MAPPA.sotto) { MAPPA.sotto = n; mappaEvidenzia(n); }
+  if (n >= 0) {
+    const f = cur.fili[n], c = PROVA.col[n];
+    tip.hidden = false;
+    tip.innerHTML = `<b>${t("Filo")} ${n + 1}</b> · ${esc(c ? (PROVA.nomi[n] || c) : f ? `${f.num} · ${f.nome}` : "")}<br><small>${t("clic per cambiare colore")}</small>`;
+    tip.style.left = (e.clientX + 16) + "px"; tip.style.top = (e.clientY + 14) + "px";
+  }
+});
+$("dImg").addEventListener("mouseleave", () => { MAPPA.sotto = -1; mappaEvidenzia(-1); });
 function disegnaFili() {
+  if (PROVA.i !== cur.i) { PROVA.i = cur.i; PROVA.col = {}; PROVA.nomi = {}; }
   const manc = cur.fili.filter(f => !f.ho).length;
   $("tFili").textContent = manc ? `−${manc}` : cur.fili.length; $("tFili").title = manc ? `${manc} fili mancano` : ""; $("tFili").style.color = manc ? "var(--danger)" : "";
-  $("pFili").innerHTML = cur.fili.map((f, n) => `
-    <div class="filo" title="${f.orig ? "Nel file: " + esc(f.orig) : ""}">
+  const np = Object.keys(PROVA.col).length;
+  $("pFili").innerHTML = (np ? `<div class="prova-bar"><span style="flex:1">${t("Colori in prova:")} ${np}</span>
+      <button class="btn" data-prova-via>${t("Torna ai colori originali")}</button><button class="btn pri" data-prova-salva>${t("Salva questi colori")}</button></div>` : "") +
+    cur.fili.map((f, n) => PROVA.col[n] ? `
+    <div class="filo prova" data-n="${n}" title="${t("Clic sul colore per cambiarlo")}">
+      <span class="n">${n + 1}</span>
+      <span class="sw" style="background:${PROVA.col[n]}"></span>
+      <span class="tx"><b>${esc(PROVA.nomi[n] || PROVA.col[n])}</b><small>${t("in prova · prima:")} ${esc(f.num)} · ${esc(f.nome)}</small></span>
+      <span class="q simile">${t("Prova")}</span>
+    </div>` : `
+    <div class="filo" data-n="${n}" title="${f.orig ? "Nel file: " + esc(f.orig) + " · " : ""}${t("Clic sul colore per cambiarlo")}">
       <span class="n">${n + 1}</span>
       <span class="sw" style="background:${f.filo_hex}"><i style="background:${f.hex}"></i></span>
       <span class="tx"><b>${esc(f.num)} · ${esc(f.nome)}</b><small>${esc(f.marca)}${f.orig ? " · " + t("nel file:") + " " + esc(f.orig) : ""}</small></span>
       <span class="q ${f.qualita}">${f.qualita === "uguale" ? "Ce l'ho" : f.qualita === "simile" ? "Simile" : "Manca"}</span>
     </div>`).join("") || `<p class="hint">Il file non contiene informazioni sui colori.</p>`;
-  if (cur.fili.length) $("pFili").insertAdjacentHTML("beforeend", `<p class="hint" style="margin-top:10px">Il riquadro mostra a sinistra il colore del disegno e a destra il filo più vicino dei tuoi kit (${esc(cur.kit.join(", "))}).</p>`);
+  if (cur.fili.length) $("pFili").insertAdjacentHTML("beforeend", `<p class="hint" style="margin-top:10px">Il riquadro mostra a sinistra il colore del disegno e a destra il filo più vicino dei tuoi kit (${esc(cur.kit.join(", "))}).</p><p class="hint">${t("Clic su un riquadro per provare un altro filo: l'anteprima cambia subito.")}</p>`);
 }
 function disegnaRacc() {
   $("tRacc").textContent = cur.raccolte.length || "";
@@ -2011,7 +2156,7 @@ function mostraColVar() {
   el.hidden = !cv;
   if (!cv) { el.innerHTML = ""; return; }
   el.innerHTML = `<b>${t("Colori:")}</b>` + cv.var.map((v, k) => `<button data-k="${k}" class="${k === cv.attiva ? "on" : ""}" title="${esc(v.nome)}">
-    <span>${esc(v.nome === "Originali" ? t("Originali") : /^da /.test(v.nome) ? v.nome : t("da {}").replace("{}", v.nome))}</span><span class="sw">${v.seq.slice(0, 24).map(h => `<i style="background:${esc(h)}"></i>`).join("")}</span></button>`).join("");
+    <span>${esc(v.nome === "Originali" ? t("Originali") : /^I miei colori/.test(v.nome) ? t("I miei colori") + v.nome.slice(13) : /^da /.test(v.nome) ? v.nome : t("da {}").replace("{}", v.nome))}</span><span class="sw">${v.seq.slice(0, 24).map(h => `<i style="background:${esc(h)}"></i>`).join("")}</span></button>`).join("");
 }
 document.addEventListener("click", async e => {
   const bt = e.target.closest("#dColVar button"); if (!bt || bt.classList.contains("on")) return;
@@ -3786,7 +3931,16 @@ function zAdatta() {
 }
 function apriZoom() { const im = $("zImg"); im.onload = zAdatta; im.src = imgUrl(); $("zoom").hidden = false; if (im.complete) zAdatta(); }
 $("dZoom").onclick = apriZoom;
-$("dImg").onclick = apriZoom;
+$("dImg").onclick = e => {                                // su una parte del disegno: cambia il suo filo; fuori: zoom
+  const n = MAPPA.sotto;
+  if (n >= 0 && !vistaTel && cur.scala === 100) {
+    if (!cur.fili[n]) { toast(t("Questa parte è oltre il 40° colore: cambiala dall'elenco dei fili")); return; }
+    if ($("dTip")) $("dTip").hidden = true;
+    filoPick(n, { getBoundingClientRect: () => ({ left: e.clientX + 360, top: e.clientY }) });
+    return;
+  }
+  apriZoom(e);
+};
 $("zChiudi").onclick = () => $("zoom").hidden = true;
 $("zFit").onclick = zAdatta;
 $("zoom").addEventListener("wheel", e => {

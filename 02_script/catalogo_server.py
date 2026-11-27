@@ -643,17 +643,49 @@ def leggi_scalato(i, scala=1.0):
     return pat
 
 
-def anteprima(i, S=1800, tel=False, scala=1.0, ric=False):
+def _col_sostituiti(pat, col):
+    """col: {blocco: "#rrggbb"} -> fili del disegno con quei blocchi cambiati (prova colori nella scheda)."""
+    import pyembroidery
+    orig = [t for _s, t in pat.get_as_colorblocks()]
+    nuovi = []
+    for k, t in enumerate(orig):
+        th = pyembroidery.EmbThread()
+        h = col.get(k)
+        th.color = int(h[1:], 16) if h else ((t.color if t is not None and t.color is not None else 0x333333) & 0xFFFFFF)
+        if not h and t is not None:
+            th.description, th.catalog_number = t.description, t.catalog_number
+        nuovi.append(th)
+    pat.threadlist = nuovi
+    return pat
+
+
+def leggi_col(v):
+    """«3:#aabbcc,5:#112233» -> {3: "#aabbcc", 5: "#112233"} (solo colori validi)."""
+    out = {}
+    for x in str(v or "").split(","):
+        k, _, h = x.partition(":")
+        if k.isdigit() and re.fullmatch(r"#?[0-9a-fA-F]{6}", h):
+            out[int(k)] = "#" + h.lstrip("#").lower()
+    return out
+
+
+def anteprima(i, S=1800, tel=False, scala=1.0, ric=False, col=None):
     """Anteprima grande realistica (filo spesso 0,42 mm con ombra e riflesso, su tela) per dettaglio e zoom.
     tel=True: sfondo trasparente, per metterla nel telaio disegnato dalla pagina. Salvata in _catalogo/img_xl.
     scala != 1: disegno ridimensionato ma filo sempre 0,42 mm veri => si vede se i punti si aprono o si ammassano."""
     pc = round(scala * 100)
     ric = ric and pc != 100 and serve_ricalcolo(i, scala)
     f = os.path.join(CAT, "img_xl", f"{i}{'_t' if tel else ''}{'' if pc == 100 else (f'_r{pc}' if ric else f'_s{pc}')}.webp")
-    if os.path.exists(f):
+    if os.path.exists(f) and not col:
         return open(f, "rb").read()
     from anteprima_bella import render
     pat = ricalcolato(DATI[i][0], scala) if ric else leggi_scalato(i, scala)
+    if col:                                                 # prova colori: al volo, non si salva
+        pat = _col_sostituiti(pat, col)
+        im = render(pat, 1200 if not tel else 900, ss=1 if not tel else 2, sfondo=None if tel else True)
+        b = io.BytesIO()
+        im.save(b, "WEBP", quality=88)
+        return b.getvalue()
     im = render(pat, 900 if tel else S, ss=2, sfondo=None if tel else True)
     b = io.BytesIO()
     im.save(b, "WEBP", quality=90)
@@ -2560,6 +2592,37 @@ def colori_di(i):
     return {"attiva": v["attiva"], "var": [{"nome": x["nome"], "seq": [f[0] for f in x["fili"]]} for x in v["var"]]}
 
 
+def colori_personalizza(body):
+    """Colori scelti nella scheda (filo per filo) salvati come nuova versione dei colori del disegno."""
+    import pyembroidery
+    i = int(body.get("i", -1))
+    if not 0 <= i < len(DATI) or i in TOLTI:
+        raise ValueError("disegno non trovato")
+    rel = DATI[i][0]
+    if os.path.splitext(rel)[1].lower() not in COL_SCRIVIBILI:
+        raise ValueError("questo formato non tiene i colori")
+    col = {int(k): v for k, v in (body.get("col") or {}).items() if str(k).isdigit()}
+    col = leggi_col(",".join(f"{k}:{v}" for k, v in col.items()))
+    if not col:
+        raise ValueError("nessun colore cambiato")
+    nomi = {int(k): str(v)[:60] for k, v in (body.get("nomi") or {}).items() if str(k).isdigit()}
+    pat = pyembroidery.read(os.path.join(OUT, rel))
+    with _COL_LOCK:
+        cv = _col_var()
+        v = cv.get(rel) or {"attiva": 0, "var": [{"nome": "Originali", "fili": _fili_di(pat)}]}
+        fili = [list(f) for f in _fili_di(pat)]
+        for k, h in col.items():
+            if k < len(fili):
+                fili[k] = [h, nomi.get(k, ""), ""]
+        n = sum(1 for x in v["var"] if x["nome"].startswith("I miei colori")) + 1
+        v["var"].append({"nome": "I miei colori" + (f" {n}" if n > 1 else ""), "fili": fili})
+        _scrivi_fili(i, fili)
+        v["attiva"] = len(v["var"]) - 1
+        cv[rel] = v
+        _col_var_salva(cv)
+    return colori_di(i)
+
+
 def colori_scegli(body):
     i, k = int(body.get("i", -1)), int(body.get("k", -1))
     if not 0 <= i < len(DATI) or i in TOLTI:
@@ -3057,10 +3120,19 @@ class H(BaseHTTPRequestHandler):
             m = re.fullmatch(r"/diario/([\w.-]+\.(jpg|jpeg|png|webp))", u.path)
             if m and os.path.exists(os.path.join(DIARIO_DIR, m.group(1))):
                 return self._send(200, open(os.path.join(DIARIO_DIR, m.group(1)), "rb").read(), "image/jpeg", cache=True)
+            if u.path == "/api/mappa":                            # parti del disegno sotto il mouse (scheda)
+                from anteprima_bella import mappa
+                import numpy as np
+                import zlib
+                a_ = np.asarray(mappa(leggi_scalato(int(p["i"])), max(200, min(1200, int(p.get("size", 600)))))).astype(np.uint32)
+                c_ = np.minimum((a_[..., 0] << 16) | (a_[..., 1] << 8) | a_[..., 2], 65535).astype("<u2")
+                # dati grezzi (2 byte per pixel), non PNG: Brave e altri browser alterano i pixel letti da un canvas
+                return self._send(200, zlib.compress(c_.tobytes(), 6), "application/octet-stream", cache="rev")
             if u.path == "/api/anteprima":                        # ric=1: punti ricalcolati (ridimensionamento intelligente)
                 sc = max(0.3, min(3.0, float(p.get("scala", 100)) / 100))
-                return self._send(200, anteprima(int(p["i"]), tel=p.get("tel") == "1", scala=sc, ric=p.get("ric") == "1"),
-                                  "image/webp", cache="rev")
+                cl = leggi_col(p.get("col"))
+                return self._send(200, anteprima(int(p["i"]), tel=p.get("tel") == "1", scala=sc, ric=p.get("ric") == "1",
+                                                 col=cl or None), "image/webp", cache=False if cl else "rev")
             if u.path == "/api/scala":
                 return self._send(200, valuta_scala(int(p["i"]), max(0.3, min(3.0, float(p.get("scala", 100)) / 100)),
                                                     ric=p.get("ric") == "1"))
@@ -3244,6 +3316,8 @@ class H(BaseHTTPRequestHandler):
                 return self._send(200, imp_scarta(body))
             if self.path == "/api/importa/colori":
                 return self._send(200, imp_prendi_colori(body))
+            if self.path == "/api/colori/personalizza":
+                return self._send(200, colori_personalizza(body))
             if self.path == "/api/colori/scegli":
                 return self._send(200, colori_scegli(body))
             if self.path in ("/api/digit/rifai", "/api/digit/scarta", "/api/digit/salva", "/api/digit/conferma", "/api/digit/ai"):

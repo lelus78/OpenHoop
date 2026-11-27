@@ -776,5 +776,22 @@
  "già nella libreria (saltati)": "already in the library (skipped)",
  "{} già importati prima": "{} already imported before",
  "{} × {} mm · {} colore · {} punti · da {}": "{} × {} mm · {} colour · {} stitches · from {}",
- "da {}": "from {}"
+ "da {}": "from {}",
+ "Prova colori": "Colour test",
+ "Filo": "Thread",
+ "scegli un altro colore": "choose another colour",
+ "cerca numero o nome…": "search number or name…",
+ "anche i fili che non ho": "also threads I don't have",
+ "Nessun filo: spunta «anche i fili che non ho»": "No threads: tick «also threads I don't have»",
+ "Salvati come nuova versione dei colori: la trovi sotto «Colori»": "Saved as a new colour version: you'll find it under «Colours»",
+ "Colori in prova:": "Colours being tested:",
+ "Torna ai colori originali": "Back to the original colours",
+ "Salva questi colori": "Save these colours",
+ "Clic sul colore per cambiarlo": "Click the colour to change it",
+ "in prova · prima:": "testing · before:",
+ "Prova": "Test",
+ "Clic su un riquadro per provare un altro filo: l'anteprima cambia subito.": "Click a swatch to try another thread: the preview changes right away.",
+ "I miei colori": "My colours",
+ "Questa parte è oltre il 40° colore: cambiala dall'elenco dei fili": "This part is past the 40th colour: change it from the thread list",
+ "clic per cambiare colore": "click to change colour"
 }

@@ -776,5 +776,22 @@
  "già nella libreria (saltati)": "ya en la biblioteca (omitidos)",
  "{} già importati prima": "{} ya importados antes",
  "{} × {} mm · {} colore · {} punti · da {}": "{} × {} mm · {} color · {} puntadas · desde {}",
- "da {}": "de {}"
+ "da {}": "de {}",
+ "Prova colori": "Prueba de colores",
+ "Filo": "Hilo",
+ "scegli un altro colore": "elige otro color",
+ "cerca numero o nome…": "buscar número o nombre…",
+ "anche i fili che non ho": "también los hilos que no tengo",
+ "Nessun filo: spunta «anche i fili che non ho»": "Ningún hilo: marca «también los hilos que no tengo»",
+ "Salvati come nuova versione dei colori: la trovi sotto «Colori»": "Guardados como nueva versión de colores: está en «Colores»",
+ "Colori in prova:": "Colores en prueba:",
+ "Torna ai colori originali": "Volver a los colores originales",
+ "Salva questi colori": "Guardar estos colores",
+ "Clic sul colore per cambiarlo": "Haz clic en el color para cambiarlo",
+ "in prova · prima:": "en prueba · antes:",
+ "Prova": "Prueba",
+ "Clic su un riquadro per provare un altro filo: l'anteprima cambia subito.": "Haz clic en un recuadro para probar otro hilo: la vista previa cambia enseguida.",
+ "I miei colori": "Mis colores",
+ "Questa parte è oltre il 40° colore: cambiala dall'elenco dei fili": "Esta parte está más allá del color 40: cámbiala desde la lista de hilos",
+ "clic per cambiare colore": "haz clic para cambiar el color"
 }
