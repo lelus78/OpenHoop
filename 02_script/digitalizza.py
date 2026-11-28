@@ -35,6 +35,9 @@ MIN_COLORE_MM2 = 4.0   # mm² reali: un colore che in tutto il disegno occupa me
 
 
 # ---------------------------------------------------------------- 1-3: analisi dell'immagine
+PX_MM_MIN = 10.0       # px/mm: immagini più piccole si ingrandiscono prima dell'analisi (contorni lisci)
+
+
 def carica(percorso, altezza_mm):
     """percorso = file o oggetto aperto; altezza_mm = misura del lato lungo del ricamo."""
     rgb, ppm, _, _ = carica_con_linee(percorso, altezza_mm)
@@ -57,6 +60,18 @@ def _ritaglio(im):
         return None
     ys, xs = np.nonzero(np.isin(lab, tieni))
     H, W = m.shape
+    # pezzetti piccoli vicino al disegno (trattini di un tappeto, fiocchi di neve dei disegni a linee): contano se
+    # insieme fanno qualcosa (≥ 0,1% dell'immagine), non un granello di polvere da solo
+    piccoli = np.nonzero((dim > 0) & (dim < 0.002 * m.size) & (dim >= max(20, 0.00002 * m.size)))[0]
+    if len(piccoli):
+        x0c, y0c, x1c, y1c = xs.min(), ys.min(), xs.max(), ys.max()
+        d = int(0.08 * max(H, W))
+        sl = ndimage.find_objects(lab)
+        vicini = [k for k in piccoli if sl[k - 1] is not None
+                  and sl[k - 1][0].start <= y1c + d and sl[k - 1][0].stop >= y0c - d
+                  and sl[k - 1][1].start <= x1c + d and sl[k - 1][1].stop >= x0c - d]
+        if vicini and dim[vicini].sum() >= 0.001 * m.size:
+            ys, xs = np.nonzero(np.isin(lab, np.concatenate([tieni, vicini])))
     mg = max(2, int(0.005 * max(H, W)))
     x0, y0, x1, y1 = max(0, xs.min() - mg), max(0, ys.min() - mg), min(W, xs.max() + 1 + mg), min(H, ys.max() + 1 + mg)
     return (x0, y0, x1, y1)
@@ -84,8 +99,10 @@ def carica_con_linee(percorso, altezza_mm):
     lato_px = max(im.size)
     ppm = max(im.size) / altezza_mm
     linee = None
-    if not 6 <= ppm <= 14:                                   # 0.07-0.17 mm per pixel: abbastanza fine, non troppo lento
-        k = min(14, max(6, ppm)) / ppm
+    # PASSO 37 (28/11/2026): sotto 10 px/mm si ingrandisce (Lanczos) prima dell'analisi: il cerbiatto ridisegnato
+    # (1189 px a 179 mm = 6,6 px/mm) dava contorni seghettati, lo scheletro seguiva gli scalini dei pixel
+    if not PX_MM_MIN <= ppm <= 14:                           # 0.07-0.1 mm per pixel: abbastanza fine, non troppo lento
+        k = min(14, max(PX_MM_MIN, ppm)) / ppm
         dim = (max(1, round(im.size[0] * k)), max(1, round(im.size[1] * k)))
         if k < 0.45:                                         # solo se le linee si dimezzano (Elsa 2400 px a 50 mm)
             linee = _linee_scure(_su_bianco(im), dim)
@@ -173,6 +190,29 @@ def colori(rgb, fondo, max_k=12, unisci_de=14.0, minimo=0.004, ppm=None, min_mm2
         C, _ = kmeans2(camp, np.array(picchi), minit="matrix", iter=5)
     else:
         C, _ = kmeans2(camp, max_k, seed=1, minit="++")
+    # PASSO 30 (27/11/2026): colori SFUMATI senza picco (guance rosa, lingua del cagnolino in «Bimba e
+    # cucciolo»): nessun rosa identico copre abbastanza pixel per fare un picco e finiva nel color pelle.
+    # Nelle zone uniformi (non sui bordi, dove le sfumature tra due colori sono normali) i pixel lontani da
+    # tutti i colori scelti, se sono abbastanza, diventano un colore in più
+    if len(C) < max_k:
+        gr = sum(np.abs(np.gradient(lab[..., k], axis=a)) for k in range(3) for a in (0, 1))
+        piatti = lab[fg & (gr < 4.0)]
+        if len(piatti):
+            piatti = piatti[rnd.choice(len(piatti), min(60000, len(piatti)), replace=False)]
+            dmin = np.sqrt(((piatti[:, None] - C[None]) ** 2).sum(-1)).min(1)
+            lontani = piatti[dmin > 18.0]
+            serve = max(30, 0.003 * len(piatti))
+            if ppm and min_mm2:
+                serve = max(serve, min_mm2 * ppm ** 2 * len(piatti) / max(1, fg.sum()))
+            for _ in range(3):
+                if len(lontani) < serve or len(C) >= max_k:
+                    break
+                c, _ = kmeans2(lontani, 1, seed=1, minit="++")
+                lontani = lontani[np.sqrt(((lontani - c[0]) ** 2).sum(-1)) > 18.0]
+                # solo colori chiari o medi (rosa, pesca): un colore scuro aggiunto così (iride blu della ragazza di prova)
+                # si prendeva pezzi del contorno scuro e il contorno a 10 cm usciva più sottile
+                if c[0][0] >= 40:
+                    C = np.vstack([C, c])
     # unisci centri vicini (stesso colore spezzato in due) e togli quelli rari (sfumature dei bordi)
     while True:
         d = np.sqrt(((C[:, None] - C[None]) ** 2).sum(-1)) + np.eye(len(C)) * 1e9
@@ -278,6 +318,55 @@ def zone(et, ppm, pal=None, ingrandisci=False, registro=None):
             out[m] = len(info)
             info.append({"id": len(info), "colore": int(c), "px": int(m.sum())})
     return out, info
+
+
+def separa_macchie(z, info, ppm, pal=None, spess_mm=0.6, min_mm2=10.0):
+    """PASSO 35 (28/11/2026): una zona fatta di linee sottili con dentro una MACCHIA piena dello stesso colore
+    (pupilla nera attaccata al contorno nero dell'occhio nel cerbiatto ridisegnato: una zona sola «linea» -> il satin
+    seguiva lo scheletro e una riga passava in mezzo all'occhio). La macchia (spessore > 2×spess_mm) diventa una
+    zona sua, STESSO colore: si riempie, e il contorno resta linea.
+    (Una prima versione le dava anche un colore suo: nell'occhio della ragazza di prova pupilla e iride diventavano un disco
+    azzurro. Il colore non si tocca.)"""
+    from skimage.morphology import skeletonize
+    sl = ndimage.find_objects(z + 1)
+    r = max(1, int(round(spess_mm * ppm)))
+    # solo il colore del CONTORNO (il più scuro della tavolozza): pupilla nera attaccata al contorno nero. Su altri
+    # colori (anello azzurro dell'iride della ragazza di prova) la «macchia» riempita copriva la pupilla
+    scuro = int(np.argmin([sum(c[:3]) for c in pal])) if pal else None
+    for o in list(info):
+        k = o["id"]
+        if scuro is not None and o["colore"] != scuro:
+            continue
+        if k >= len(sl) or sl[k] is None or o["px"] < 3 * min_mm2 * ppm * ppm:
+            continue
+        s_ = sl[k]
+        m = z[s_] == k
+        dt = ndimage.distance_transform_edt(np.pad(m, 1))[1:-1, 1:-1]
+        sk = skeletonize(m)
+        if not sk.any() or np.median(dt[sk]) / ppm > 0.45:   # la zona non è fatta di linee sottili
+            continue
+        nucleo, n = ndimage.label(dt > r)
+        for j in range(1, n + 1):
+            # 2r: la macchia si prende anche i trattini sottili rimasti attaccati (attorno al riflesso), che
+            # altrimenti diventavano una linea dentro la pupilla
+            blob = ndimage.binary_dilation(nucleo == j, iterations=2 * r) & m
+            npx = int(blob.sum())
+            if npx < min_mm2 * ppm * ppm or npx > 0.7 * m.sum():
+                continue
+            # solo macchie TONDE e piene (pupille): i pezzi di ciglia spesse della ragazza di prova (allungati, 2-5 mm²) staccati
+            # facevano diventare filza il resto del contorno dell'occhio e la pupilla spariva
+            ys_, xs_ = np.nonzero(blob)
+            sub_b = blob[ys_.min():ys_.max() + 1, xs_.min():xs_.max() + 1]
+            from skimage.morphology import convex_hull_image
+            if not _compatto(blob) or sub_b.sum() < 0.8 * convex_hull_image(sub_b).sum():
+                continue
+            nid = len(info)
+            sub = z[s_]
+            sub[blob] = nid
+            info.append({"id": nid, "colore": o["colore"], "px": npx, "macchia": True, "padre": k})
+            o["px"] -= npx
+            o["ha_macchia"] = True
+    return z, info
 
 
 def dividi_zone(rgb, z, info, ppm, min_mm2=60.0, soglia=3.0, parte_mm2=20.0, spess_mm=1.0):
@@ -530,7 +619,7 @@ def maschera_zona(z, o):
     return m
 
 
-def separa_per_zona(rgb, z, info, pal, ppm, soglia=3.0, min_mm2=20.0):
+def separa_per_zona(rgb, z, info, pal, ppm, soglia=3.0, min_mm2=20.0, massimo=None):
     """PASSO 8b: due colori quasi uguali in zone diverse (pelle #ffe9d7 e capelli #fdf0d8 di Elsa, ΔE ~4) finiscono
     nello stesso gruppo e nessuna soglia sui soli colori li separa senza separare anche le sfumature. Qui si
     guarda il colore MEDIO di ogni zona grande: se è lontano (CIEDE2000 > soglia) dal colore del suo gruppo,
@@ -573,6 +662,16 @@ def separa_per_zona(rgb, z, info, pal, ppm, soglia=3.0, min_mm2=20.0):
                 o["colore"] = k
                 break
         else:
+            d_ = [deltaE_ciede2000(mz[None], lb_[None])[0] for lb_ in labp] if massimo is not None else [0]
+            # oltre il tetto solo i colori DAVVERO diversi (iride azzurra della puzzola, ΔE > 15 da tutti): le
+            # sfumature di un disegno dipinto si fondono
+            if massimo is not None and len(pal) >= massimo and min(d_) <= 15:
+                # PASSO 34 (27/11/2026): disegni DIPINTI (cerbiatto dipinto: ogni zona ha una media diversa) facevano
+                # 52 colori con «Colori max 12» = 82 cambi di filo. Raggiunto il tetto, la zona prende il colore
+                # già in tavolozza più vicino alla sua media (spesso il suo)
+                o["colore"] = int(np.argmin(d_))
+                famiglia[c0].add(o["colore"])
+                continue
             from skimage.color import lab2rgb
             pal.append(tuple(int(v) for v in (lab2rgb(mz[None, None])[0, 0] * 255).round()))
             labp.append(mz)
@@ -617,7 +716,9 @@ def _misura(o, m, y0, y1, x0, x1, ppm):
     lineare = o["larg_tipica"] <= LINEA_MAX and o["lung_scheletro"] >= 2.5 * o["larg_tipica"] \
         and o["spessore_max"] <= LINEA_MAX * 1.3
     if lineare:
-        o["punto"] = "filza3" if o["larg_tipica"] < FILZA_MAX else "satin"
+        # una zona da cui è stata staccata una macchia (PASSO 35) resta satin: senza la macchia la larghezza tipica
+        # scende e la filza perdeva la pupilla della ragazza di prova (che sta ancora in questa zona)
+        o["punto"] = "filza3" if o["larg_tipica"] < FILZA_MAX and not o.get("ha_macchia") else "satin"
     elif o["spessore_max"] <= PUNTINO_MAX:
         o["punto"] = "satin_pieno"          # occhi, bottoni piccoli: satin di traverso (dati: 4-6 mm -> satin)
     else:
@@ -884,7 +985,8 @@ def analizza(percorso, altezza_mm=100, max_colori=12, forzati=None, marca=None, 
     z, info = dividi_zone(rgb, z, info, ppm)
     if linee is not None:
         z, info = separa_linee_esterne(z, info, fondo, linee, ppm)
-    pal = separa_per_zona(rgb, z, info, pal, ppm)
+    pal = separa_per_zona(rgb, z, info, pal, ppm, massimo=max_colori + 2)   # tetto: pochi colori in più del chiesto
+    z, info = separa_macchie(z, info, ppm, pal)         # dopo i colori: la macchia tiene quello della sua zona
     if semantica:
         pal = applica_semantica(rgb, z, info, pal, semantica)
     if semplifica:
@@ -917,6 +1019,13 @@ def analizza(percorso, altezza_mm=100, max_colori=12, forzati=None, marca=None, 
         if linee:
             l = max(linee, key=lambda v: v["px"])
             o["sopra_a"] = l["sopra_a"] if l["sopra_a"] != o["colore"] else None
+    # PASSO 33 (27/11/2026): una «linea» satin larga (≥ 2,5 mm) che non tocca il fondo è una FORMA chiusa dal
+    # contorno (corno della renna a 7 cm: spessore 6,47 mm contro la soglia 6,5 -> satin, l'altro corno 6,54 ->
+    # riempimento). Da satin non entrava sotto il contorno e alla base, dove le linee si incrociano, restava
+    # tela scoperta: diventa riempimento come il corno gemello
+    for o in info:
+        if o["punto"] == "satin" and not o["tocca_sfondo"] and o.get("larg_tipica", 0) >= 2.5:
+            o["punto"] = "fill"
     # PASSO 3: il contorno esterno non è mai una filza. I disegni veri da 50 mm del catalogo hanno satin larghi
     # almeno ~1 mm come quelli da 100 mm (p5 0,97 mm): la linea resta satin (portato a SATIN_MIN), se no la metà
     # esterna della linea resta tela scoperta. Le linee interne sottili restano filza: il riempimento va sotto.
@@ -928,8 +1037,35 @@ def analizza(percorso, altezza_mm=100, max_colori=12, forzati=None, marca=None, 
     from skimage.color import rgb2lab
     Lp = [float(rgb2lab(np.array(p, float)[None, None] / 255.0)[0, 0, 0]) for p in pal]
     for o in info:
-        if o["punto"] == "filza3" and o.get("sopra_a") is not None and Lp[o["colore"]] > Lp[o["sopra_a"]] + 12:
+        if o["punto"] == "filza3" and o.get("sopra_a") is not None and Lp[o["colore"]] > Lp[o["sopra_a"]] + 12 \
+                and o.get("larg_tipica", 0) >= 0.9 * SATIN_MIN:
             o["punto"] = "satin"
+    # PASSO 31 (27/11/2026): una linea MOLTO più sottile del satin minimo (bracci dei cristalli di ghiaccio della
+    # ragazza di prova: 0,4-0,6 mm a 7 cm) portata a satin da 1 mm + compensazione si gonfiava e i bracci, distanti meno di
+    # 1 mm, si fondevano in una macchia. Diventa filza tripla (larga più o meno come la linea vera). Resta satin
+    # solo se fa da bordo a un riempimento di un altro colore (lì il riempimento finisce sotto la linea)
+    per_id_ = {o["id"]: o for o in info}
+    for o in info:
+        if o["punto"] not in ("satin", "filza3") or o.get("larg_tipica", 9) >= 0.9 * SATIN_MIN or o.get("ha_macchia"):
+            continue
+        # fino a 0,9 mm solo le forme RAMIFICATE (cristalli: tanti bracci); fasce e onde colorate (bordino rosso
+        # del tetto della casetta, glassa dell'omino) solo sotto 0,7 mm, se no da fascia diventano un filo
+        if o.get("larg_tipica", 9) >= 0.7 * SATIN_MIN and o["punto"] == "satin":
+            rami_, _ = _percorsi_scheletro(maschera_zona(z, o))
+            if sum(1 for r_ in rami_ if len(r_) >= 3) < 5:
+                continue
+        vic = o.get("vicini") or {}
+        tot = sum(vic.values()) or 1
+        # (contatti con TUTTE le zone piene sommati: il contorno della ragazza di prova tocca capelli, viso, vestito...)
+        bordo_riemp = o["tocca_sfondo"] and sum(
+            n_ for k, n_ in vic.items() if k in per_id_ and per_id_[k]["punto"] != "filza3"   # anche ciocche satin
+            and per_id_[k]["colore"] != o["colore"]
+            and per_id_[k]["px"] / ppm ** 2 >= 15.0) > 0.3 * tot   # non i pezzettini (1-2 mm²) del cristallo
+        if not bordo_riemp:
+            o["punto"] = "filza3"
+            # riga sottile ma «piena» (lettere di una scritta piccola): ripassata 5 volte, resta marcata
+            if o.get("larg_tipica", 0) >= 0.55:
+                o["passate"] = 5
     import fili as F
     from skimage.color import deltaE_ciede2000
     hexes = ["#%02x%02x%02x" % tuple(c) for c in pal]
@@ -1036,6 +1172,17 @@ def _livelli(info):
                          and per_id[k].get("assorbita_in") is None]
                 if pieni and liv[o["id"]] <= max(pieni):
                     liv[o["id"]] = max(pieni) + 1
+    # PASSO 35b: le zone piccole attaccate a una macchia separata dal contorno (il riflesso bianco sulla pupilla,
+    # che tocca anche l'iride) si ricamano DOPO: il riflesso ha lo stesso bianco del bulbo e i livelli lo mettevano
+    # sotto la pupilla
+    for o in info:
+        if not o.get("macchia"):
+            continue
+        for q in info:
+            tot = sum(v for k, v in q["vicini"].items())
+            if (q["px"] < 0.125 * o["px"] and q["punto"] == "satin_pieno" and q["colore"] != o["colore"] and tot
+                    and q["vicini"].get(o["id"], 0) >= 0.25 * tot and liv[q["id"]] <= liv[o["id"]]):
+                liv[q["id"]] = liv[o["id"]] + 1
     top = max(liv.values(), default=0) + 1
     for o in info:
         o["livello"] = top if (o["tocca_sfondo"] and o["punto"] in ("satin", "filza3")) else liv[o["id"]]
@@ -1081,6 +1228,21 @@ def unita_di_ricamo(A):
         return m
 
 
+    # PASSO 32 (27/11/2026): dove più linee si incontrano (base del corno sulla testa della renna a 7 cm) la
+    # linea fa una macchia più larga della sua larghezza tipica: il satin copre solo attorno al centro e il
+    # riempimento entrava sotto solo per mezza larghezza tipica -> tela scoperta. Ogni pixel di linea va al
+    # riempimento più vicino (come nel punto croce): sotto le macchie degli incroci c'è sempre il colore giusto
+    # (solo le linee del CONTORNO principale, il colore di linea più usato: una fascia colorata come il bordino
+    # rosso del tetto della casetta deve restare coperta solo dal suo satin, se no la neve le entrava sotto)
+    area_col = {}
+    for p in info:
+        if p["punto"] in ("satin", "filza3"):
+            area_col[p["colore"]] = area_col.get(p["colore"], 0) + p["px"]
+    col_cont = max(area_col, key=area_col.get) if area_col else None
+    ids_linea = [p["id"] for p in info if p["punto"] in ("satin", "filza3") and p["colore"] == col_cont]
+    px_linea = np.isin(z, ids_linea)
+    if px_linea.any():
+        _, (iy_l, ix_l) = ndimage.distance_transform_edt(px_linea, return_indices=True)
     unita = []
     for o in info:
         if o.get("assorbita_in") is not None and per_id[o["assorbita_in"]]["punto"] in ("fill", "satin_pieno"):
@@ -1104,6 +1266,9 @@ def unita_di_ricamo(A):
                 y0, y1 = max(0, ys.min() - hw - 2), ys.max() + hw + 3
                 x0, x1 = max(0, xs.min() - hw - 2), xs.max() + hw + 3
                 sub = ndimage.binary_dilation(m[y0:y1, x0:x1], iterations=hw) & (z[y0:y1, x0:x1] == L)
+                # + i pixel della linea più vicini a questo riempimento che a ogni altra cosa (passo 32)
+                if pl["colore"] == col_cont:
+                    sub |= (z[y0:y1, x0:x1] == L) & m[iy_l[y0:y1, x0:x1], ix_l[y0:y1, x0:x1]]
                 m[y0:y1, x0:x1] |= sub
                 sotto_linee.add(int(L))
             # sormonto verso i colori vicini ricamati dopo o insieme (non lo sfondo): niente fessure di tela
@@ -1597,16 +1762,21 @@ def satin_linea(m, ppm, passo=0.42, comp=0.25, oltre=None):
     return tratti
 
 
-def filza3_linea(m, ppm):
+def filza3_linea(m, ppm, passate=3):
+    """Filza ripassata (3 volte; 5 per le righe sottili ma «piene» dei disegni piccoli: passo 31)."""
     rami, _ = _percorsi_scheletro(m)
     out = []
     for r in rami:
         if len(r) < 3:
             continue
-        P, _ = _ricampiona(np.array(r, float)[:, ::-1] / ppm, 2.0)
+        Q = np.array(r, float)[:, ::-1] / ppm
+        lung = float(np.sum(np.hypot(*np.diff(Q, axis=0).T))) if len(Q) > 1 else 0.0
+        # punti da 2 mm; sui rami corti (bracci di un cristallo piccolo) più corti, fino a 1 mm: niente spigoli
+        P, _ = _ricampiona(Q, max(1.0, min(2.0, lung / 4)))
         b = [tuple(P[0])]
         for p in P[1:]:
-            b += [tuple(p), b[-1], tuple(p)]
+            q = b[-1]
+            b += [tuple(p), q, tuple(p)] if passate == 3 else [tuple(p), q, tuple(p), q, tuple(p)]
         out.append(b)
     return out
 
@@ -1708,9 +1878,13 @@ def applica_scelte(A, scelte):
 def satin_pieno(poli, asse):
     """Puntini (occhi, bottoni): un punto unico da bordo a bordo, di traverso sulla forma = satin."""
     import patch as P
+    # zona di un pixel (disegni a tratto): l'asse dalla covarianza viene NaN e shapely si rompe ruotando
+    asse = float(asse) if asse is not None and np.isfinite(asse) else 0.0
     parti = [poli] if poli.geom_type == "Polygon" else [g for g in poli.geoms if g.geom_type == "Polygon"]
     out = []
     for pz in parti:
+        if pz.is_empty:
+            continue
         pz = pz.buffer(0.12)                                            # compensazione del tiro
         out += P.tatami(pz, asse + 90, 0.38, 6.5)            # Auto Split (Wilcom): mai punti oltre ~7 mm
     return out
@@ -2215,7 +2389,7 @@ def _digitalizza(A, stile, dens_base):
         elif o["punto"] == "satin":
             tr = satin_linea(u["maschera"], ppm, oltre=~A["fondo"] & (A["zone"] != o["id"]))
         else:
-            tr = filza3_linea(u["maschera"], ppm)
+            tr = filza3_linea(u["maschera"], ppm, o.get("passate", 3))
         # PASSO 27: una zona non deve MAI sparire in silenzio. Il dente sinistro del draghetto (4,4 mm², largo 1,3 mm,
         # gemello del destro) era «satin da linea» per un soffio e satin_linea su una forma così tozza dava zero punti
         if not [x for x in tr if len(x) >= 2] and o["punto"] in ("satin", "filza3") and p_sc != "salta":

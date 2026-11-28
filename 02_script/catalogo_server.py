@@ -1396,8 +1396,9 @@ def carica_tolti():
         via = set(json.load(open(F_ELIMINATI, encoding="utf-8")))
     except (OSError, ValueError):
         via = set()
+    ultimo = {d[0]: n for n, d in enumerate(DATI)}      # stesso file in più voci (reimportato): vale l'ultima
     for n, d in enumerate(DATI):
-        if d[0] in via or not os.path.exists(os.path.join(OUT, d[0])):
+        if ultimo[d[0]] != n or d[0] in via or not os.path.exists(os.path.join(OUT, d[0])):
             TOLTI.add(n)
     _CT.clear()
     _CONTEGGI.clear()
@@ -1523,8 +1524,9 @@ def digit_elenco():
 
 
 def _calcola_bozza(d, nome, alt, ncol, forzati=None, esclusi=None, semantica=None, ai=None, semplifica=None,
-                   stile="pulito", densita="normale", scelte=None):
-    """Digitalizza l'immagine della bozza con le opzioni date e riscrive PES, anteprime e info."""
+                   stile="pulito", densita="normale", scelte=None, redwork=None):
+    """Digitalizza l'immagine della bozza con le opzioni date e riscrive PES, anteprime e info.
+    redwork = {"colore": "rosso"|…|"#rrggbb", "passate": 1|3} per lo stile «redwork»."""
     import digitalizza as DG
     from anteprima_bella import render
     import pyembroidery
@@ -1553,9 +1555,20 @@ def _calcola_bozza(d, nome, alt, ncol, forzati=None, esclusi=None, semantica=Non
             A = A100
         else:
             A = DG.analizza(sorg, alt, semplifica=semp, **opz)
-        stile = stile if stile in DG.STILI else "pulito"
+        stile = stile if stile in DG.STILI or stile in ("croce", "redwork") else "pulito"
+        rw = _redwork_opz(redwork) if stile == "redwork" else None
         densita = densita if densita in DG.DENSITA else "normale"
-        pat, inf = DG.digitalizza(A, stile=stile, densita=densita, scelte=scelte or [])
+        croce = None
+        if stile == "croce":                            # punto croce: quadretto 1,6 mm, contorno morbido a punto indietro
+            import punto_croce as PC
+            pat, inf = PC.digitalizza_croce(A, cella=CROCE_CELLA, scelte=scelte or [], bordo="morbido")
+            R = inf.pop("griglia", None)
+            croce = dict(PC.idoneita(A, R), alt=alt) if R else None
+        elif stile == "redwork":                        # solo le linee, un filo, punto filza (come i redwork dell'archivio)
+            import redwork as RW
+            pat, inf = RW.digitalizza_redwork(A, colore=rw["colore"], passate=rw["passate"], staccati=rw["staccati"])
+        else:
+            pat, inf = DG.digitalizza(A, stile=stile, densita=densita, scelte=scelte or [])
         x0, y0, _, _ = pat.bounds()
         pat.translate(-x0, -y0)                             # angolo in alto a sinistra a 0,0 (Brother)
         pyembroidery.write_pes(pat, os.path.join(d, "ricamo.pes"), {"pes version": 6})
@@ -1570,7 +1583,7 @@ def _calcola_bozza(d, nome, alt, ncol, forzati=None, esclusi=None, semantica=Non
     info = {"nome": nome, "alt_mm": alt, "max_colori": ncol, "data": time.strftime("%Y-%m-%d %H:%M:%S"), "forzati": forzati or {}, "esclusi": esclusi or [],
             "semantica": semantica or [], "ai": ai, "misura": misura,
             "semplifica": semplifica, "semplificata": semp, "semplificato": A.get("semplificato", []), "stile": stile,
-            "densita": densita, "scelte": scelte or [],
+            "densita": densita, "scelte": scelte or [], "croce": croce, "redwork": rw,
             "tipi_zona": _tipi_zona(A, DG),
             "tagli": inf.get("tagli"),
             "larg": larg, "alt": altz, "punti": int(inf["punti"]), "colori": int(inf["colori"]),
@@ -1579,11 +1592,56 @@ def _calcola_bozza(d, nome, alt, ncol, forzati=None, esclusi=None, semantica=Non
             "sequenza": ["#%06x" % (t.color & 0xFFFFFF) for t in pat.threadlist],
             "fili": [{"hex": f.get("hex"), "nome": f.get("nome"), "num": f.get("num"), "originale": f["originale"], "de": f["de"],
                       "a_mano": f.get("a_mano", False),
-                      "alternative": [{"hex": x.get("hex"), "nome": x.get("nome"), "num": x.get("num"), "de": x["de"]} for x in f["alternative"]]}
-                     for f in A["fili"]]}
+                      "alternative": [{"hex": x.get("hex"), "nome": x.get("nome"), "num": x.get("num"), "de": x["de"]} for x in f.get("alternative", [])]}
+                     for f in ([inf["filo"]] if stile == "redwork" and inf.get("filo") else A["fili"])]}
     with open(os.path.join(d, "info.json"), "w", encoding="utf-8") as fh:
         json.dump(info, fh, ensure_ascii=False)
     return info
+
+
+def _redwork_opz(r):
+    """Opzioni del redwork dalla pagina: colore (nome noto o #rrggbb) e passate (1 sottile, 3 marcata)."""
+    import redwork as RW
+    r = r if isinstance(r, dict) else {}
+    c = r.get("colore") or "rosso"
+    if not (c in RW.COLORI or re.fullmatch(r"#[0-9a-f]{6}", str(c))):
+        c = "rosso"
+    return {"colore": c, "passate": 3 if str(r.get("passate")) == "3" else 1, "staccati": r.get("staccati") is not False}
+
+
+CROCE_CELLA = 1.6       # mm: quadretto del punto croce (i commerciali dell'archivio 1,6-2,5)
+
+
+def digit_idoneita(body):
+    """Quanto il disegno della bozza si presta al punto croce alla misura data (0-100 % + motivi), senza rifare la
+    prova: la pagina lo mostra appena si sceglie lo stile «punto croce». Tenuto in cache per misura."""
+    import digitalizza as DG
+    import punto_croce as PC
+    d = _bozza_dir(body.get("id"))
+    vec = _bozza_info(body["id"])
+    alt = max(20.0, min(400.0, float(body.get("alt") or vec["alt_mm"])))
+    chiave = json.dumps([vec.get("data"), round(alt, 1), CROCE_CELLA])
+    f_c = os.path.join(d, "croce.json")
+    try:
+        cache = json.load(open(f_c, encoding="utf-8"))
+    except (OSError, ValueError):
+        cache = {}
+    if chiave in cache:
+        return cache[chiave]
+    sorg = next(os.path.join(d, f) for f in os.listdir(d) if f.startswith("immagine."))
+    misura = vec.get("misura") or {}
+    semp = (alt < misura.get("min", 0)) if vec.get("semplifica") is None else bool(vec["semplifica"])
+    with _DIGIT_LOCK:
+        A = DG.analizza(sorg, alt, max_colori=vec["max_colori"], forzati=vec.get("forzati") or {}, marca=None,
+                        esclusi=vec.get("esclusi") or [], semantica=vec.get("semantica") or [], semplifica=semp)
+        R = PC.griglia(A, CROCE_CELLA, vec.get("scelte") or [], "morbido")
+        v = dict(PC.idoneita(A, R), alt=alt) if R else {"perc": 0, "livello": "sconsigliato", "motivi": [], "alt": alt}
+    v = {k: v[k] for k in ("perc", "livello", "motivi", "celle", "alt") if k in v}
+    cache = {k: x for k, x in cache.items() if json.loads(k)[0] == vec.get("data")}   # via quelle delle prove vecchie
+    cache[chiave] = v
+    with open(f_c, "w", encoding="utf-8") as fh:
+        json.dump(cache, fh)
+    return v
 
 
 def _tipi_zona(A, DG):
@@ -1681,9 +1739,10 @@ def digit_rifai(body):
                 v["densita"] = s["densita"]
             if len(v) > 2:
                 scelte.append(v)
+    redwork = body.get("redwork") if isinstance(body.get("redwork"), dict) else vec.get("redwork")
     info = _calcola_bozza(d, nome, max(20.0, min(400.0, float(body.get("alt") or vec["alt_mm"]))),
                           max(2, min(16, int(body.get("colori") or vec["max_colori"]))), forzati, esclusi,
-                          semantica, vec.get("ai"), semplifica, stile, densita, scelte)
+                          semantica, vec.get("ai"), semplifica, stile, densita, scelte, redwork)
     return dict(info, id=body["id"])
 
 
@@ -1704,7 +1763,7 @@ def digit_ai(body):
     ai = {"data": time.strftime("%Y-%m-%d %H:%M:%S"), "token": uso.get("total_tokens"), "zone": len(sem)}
     info = _calcola_bozza(d, vec["nome"], vec["alt_mm"], vec["max_colori"], vec.get("forzati"), vec.get("esclusi"), sem, ai,
                           vec.get("semplifica"), vec.get("stile") or "pulito", vec.get("densita") or "normale",
-                          vec.get("scelte") or [])
+                          vec.get("scelte") or [], vec.get("redwork"))
     proposte = [[s["x"], s["y"]] for s in sem if s["etichetta"] == "sfondo_da_non_ricamare"]
     return dict(info, id=body["id"], proposte=proposte)
 
@@ -1754,8 +1813,29 @@ def digit_salva(body):
     return {"file": dest}
 
 
+def _non_piu_eliminato(rel):
+    """Un disegno nuovo prende il percorso di uno eliminato (reimportato): il percorso esce da eliminati.json,
+    se no al prossimo avvio anche il nuovo risultava eliminato e spariva."""
+    if not F_ELIMINATI:
+        return
+    with _stato_lock:
+        try:
+            via = json.load(open(F_ELIMINATI, encoding="utf-8"))
+        except (OSError, ValueError):
+            return
+        if rel not in via:
+            return
+        with open(F_ELIMINATI + ".tmp", "w", encoding="utf-8") as fh:
+            json.dump(sorted(set(via) - {rel}), fh, ensure_ascii=False)
+        os.replace(F_ELIMINATI + ".tmp", F_ELIMINATI)
+
+
 def _aggiungi_al_catalogo(voce_d, ricalcola=True):
     """Aggiunge una voce [percorso, tema, w, h, colori, punti, ext, sequenza] a tutte le strutture in memoria."""
+    vecchio = IDX.get(voce_d[0])
+    if vecchio is not None:                             # stesso file di una voce vecchia: quella non vale più
+        TOLTI.add(vecchio)
+    _non_piu_eliminato(voce_d[0])
     i = len(DATI)
     DATI.append(voce_d)
     LOW.append(voce_d[0].lower())
@@ -1963,6 +2043,29 @@ def _imp_segna_sorgente(sha1, valore):
         os.replace(F_IMP_SORG + ".tmp", F_IMP_SORG)
 
 
+def _gia_importato(sorgenti, sha1):
+    """Il file è già stato importato (o scartato) e il disegno c'è ancora? Se nel frattempo è stato eliminato o il
+    file non c'è più si può reimportare (prima restava «già importato» per sempre)."""
+    v = sorgenti.get(sha1)
+    if v is None:
+        return False
+    if v == "scartato":
+        return True
+    j = _INDICE_PER_PERCORSO().get(v)
+    return j is not None and j not in TOLTI and os.path.exists(os.path.join(OUT, v))
+
+
+def _INDICE_PER_PERCORSO():
+    if _PER_PERCORSO.get("_n") != len(DATI):
+        _PER_PERCORSO.clear()
+        _PER_PERCORSO.update({d[0]: j for j, d in enumerate(DATI)})
+        _PER_PERCORSO["_n"] = len(DATI)
+    return _PER_PERCORSO
+
+
+_PER_PERCORSO = {}
+
+
 def _doppione(info):
     """Lo stesso disegno è già nel catalogo? Stessa regola del riordino: misure ±1 mm, punti ±3%, firma 8×8
     quasi uguale (le firme del catalogo si calcolano solo per i pochi candidati). -> indice o None."""
@@ -1977,6 +2080,8 @@ def _doppione(info):
     for dw in (-1, 0, 1):
         for dh in (-1, 0, 1):
             for j in _PER_MISURA.get((kw + dw, kh + dh), ()):
+                if j in TOLTI:                              # eliminato: non è più nel catalogo
+                    continue
                 p2 = DATI[j][5]
                 if abs(p2 - info["punti"]) > 0.03 * max(p2, info["punti"]):
                     continue
@@ -2010,7 +2115,7 @@ def _imp_uno(d, fonte, sorgenti, in_attesa=None, salta=False):
     import importa as IM
     from anteprima_bella import render
     pat, info = IM.prepara(d)
-    if info["sha1"] in sorgenti:
+    if _gia_importato(sorgenti, info["sha1"]):
         _IMP_STATO["gia"] += 1
         return
     if in_attesa is None:
@@ -3095,7 +3200,7 @@ class H(BaseHTTPRequestHandler):
                 v["patch_di"] = {"i": IDX[_o], "nome": NOMI[IDX[_o]]} if _o in IDX else None
                 v["allegati"] = allegati_di(i)
                 v["colori_var"] = colori_di(i)
-                v.update(percorso=DATI[i][0], seq=DATI[i][7] if len(DATI[i]) > 7 else [], simili=EMB is not None and i < _n_emb, n_serie=len(serie_di(i)),
+                v.update(percorso=DATI[i][0], seq=DATI[i][7] if len(DATI[i]) > 7 else [], simili=EMB is not None and i < _n_emb, n_serie=sum(1 for j in serie_di(i) if j not in TOLTI),
                          varianti=[{"i": j, "nome": NOMI[j], "w": DATI[j][2], "h": DATI[j][3], "tel": telaio_min(DATI[j][2], DATI[j][3])}
                                    for j in GRUPPO.get(VAR.get(i), [])],
                          fili=info_fili(i), kit=KIT,
@@ -3200,7 +3305,8 @@ class H(BaseHTTPRequestHandler):
             if u.path == "/api/importa":                            # disegni in attesa + stato dell'importazione
                 temi = sorted({d[1] for d in DATI} - {DIG_TEMA})
                 return self._send(200, {"attesa": imp_elenco(), "stato": imp_stato(), "temi": temi,
-                                        "recenti": len(DATI) - N_DATIJS,
+                                        # senza quelli eliminati (cestino) o col file sparito: la lista non li mostra
+                                        "recenti": sum(1 for i in range(N_DATIJS, len(DATI)) if i not in TOLTI),
                                         "download": os.path.join(os.path.expanduser("~"), "Downloads")})
             m = re.fullmatch(r"/api/importa/([0-9a-f]+)/anteprima\.webp", u.path)
             if m:
@@ -3320,8 +3426,10 @@ class H(BaseHTTPRequestHandler):
                 return self._send(200, colori_personalizza(body))
             if self.path == "/api/colori/scegli":
                 return self._send(200, colori_scegli(body))
-            if self.path in ("/api/digit/rifai", "/api/digit/scarta", "/api/digit/salva", "/api/digit/conferma", "/api/digit/ai"):
-                fn = {"rifai": digit_rifai, "scarta": digit_scarta, "salva": digit_salva, "conferma": digit_conferma, "ai": digit_ai}
+            if self.path in ("/api/digit/rifai", "/api/digit/scarta", "/api/digit/salva", "/api/digit/conferma", "/api/digit/ai",
+                             "/api/digit/idoneita"):
+                fn = {"rifai": digit_rifai, "scarta": digit_scarta, "salva": digit_salva, "conferma": digit_conferma, "ai": digit_ai,
+                      "idoneita": digit_idoneita}
                 return self._send(200, fn[self.path.rsplit("/", 1)[1]](body))
             if self.path == "/api/componi/adatta":
                 return self._send(200, adatta_in_cornice(body))

@@ -441,6 +441,20 @@ input[type=range] { width: 100%; accent-color: var(--accent); margin: 14px 0 2px
 .col-var .sw { display: flex; gap: 2px; flex-wrap: wrap; }
 .col-var .sw i { width: 11px; height: 11px; border-radius: 3px; border: 1px solid #0002; }
 .dlg.dopc { max-width: 1180px; }
+.dlg.conf { max-width: 1500px; width: 96vw; }
+.conf-griglia { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.conf-lato { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.conf-lato h4 { margin: 0; font-size: .95rem; overflow-wrap: anywhere; }
+.conf-fig { position: relative; height: min(58vh, 44vw); background: var(--surface-2); border-radius: 12px; overflow: hidden; cursor: grab; touch-action: none; }
+.conf-fig.trascina { cursor: grabbing; }
+.conf-fig .vista { position: absolute; inset: 0; transform-origin: 0 0; }
+.conf-fig img { width: 100%; height: 100%; object-fit: contain; user-select: none; -webkit-user-drag: none; pointer-events: none; }
+.conf-dati { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; font-size: .85rem; }
+.conf-dati .k { color: var(--muted); }
+.conf-dati .v { font-weight: 700; overflow-wrap: anywhere; }
+.conf-dati .meglio { color: var(--ok); } .conf-dati .peggio { color: var(--amber); }
+.conf-sw { display: flex; flex-wrap: wrap; gap: 3px; }
+.conf-sw i { width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--line); }
 .dop-griglia { display: grid; grid-template-columns: 1fr minmax(0, 1.25fr) minmax(0, 1.25fr) 1fr; gap: 14px; align-items: start; }
 .dop-griglia .lato { display: flex; flex-direction: column; gap: 8px; font-size: .85rem; min-width: 0; }
 .dop-griglia .lato.dx { text-align: right; align-items: flex-end; }
@@ -482,6 +496,17 @@ input[type=range] { width: 100%; accent-color: var(--accent); margin: 14px 0 2px
 .dig .stat .warn { background: var(--amber-soft); } .dig .stat .warn b { color: var(--amber); }
 .dig .note { margin: 0; font-size: .78rem; color: var(--muted); line-height: 1.45; }
 .dig .note.warn { color: var(--amber); } .dig .note.bad { color: var(--danger); }
+.croce-idon { margin-top: 8px; }
+.croce-idon .scala { position: relative; height: 10px; border-radius: 5px; margin: 6px 0 4px;
+  background: linear-gradient(90deg, var(--danger) 0%, var(--danger) 30%, var(--amber) 50%, var(--amber) 62%, #6fae5a 74%, var(--ok) 88%); }
+.croce-idon .scala i { position: absolute; top: -4px; width: 4px; height: 18px; margin-left: -2px; border-radius: 2px;
+  background: var(--ink); box-shadow: 0 0 0 2px var(--surface); }
+.croce-idon .tacche { display: flex; font-size: 11px; opacity: .65; }
+.croce-idon .tacche span { text-align: center; white-space: nowrap; overflow: hidden; }
+.croce-idon .tacche span + span { border-left: 1px solid var(--line); }
+.croce-idon b.ottimo, .croce-idon b.buono { color: var(--ok); } .croce-idon b.difficile { color: var(--amber); }
+.croce-idon b.sconsigliato { color: var(--danger); }
+.croce-idon ul { margin: 4px 0 0; padding-left: 18px; font-size: 12.5px; }
 .dseg { display: inline-flex; background: var(--surface-2); border-radius: 9px; padding: 3px; gap: 2px; }
 .dseg button { border: 0; background: none; height: 28px; padding: 0 11px; border-radius: 7px; cursor: pointer; font-weight: 700; font-size: .8rem; color: var(--muted); white-space: nowrap; }
 .dseg button:hover { color: var(--ink); }
@@ -924,9 +949,15 @@ input[type=range] { width: 100%; accent-color: var(--accent); margin: 14px 0 2px
             </div>
           </div>
           <div class="opz">
-            <label class="field" title="Pulito: riempimenti a file regolari (cartoni, patch). Schizzo: pittura ad ago, tratti che seguono il pelo e le ciocche">Stile<select id="digStile"><option value="pulito">pulito</option><option value="schizzo">schizzo (pittura ad ago)</option></select></label>
+            <label class="field" title="Pulito: riempimenti a file regolari (cartoni, patch). Schizzo: pittura ad ago, tratti che seguono il pelo e le ciocche">Stile<select id="digStile"><option value="pulito">pulito</option><option value="schizzo">schizzo (pittura ad ago)</option><option value="croce">punto croce</option><option value="redwork">redwork (solo linee)</option></select></label>
             <label class="field" title="Sotto la misura consigliata: dettagli piccoli ingranditi, ciglia e trattini corti tolti, punte sottili spianate, meno colori">Semplifica<select id="digSemp"><option value="auto">automatica</option><option value="si">sì</option><option value="no">no</option></select></label>
           </div>
+          <div class="opz" id="digRw" hidden>
+            <label class="field" title="Redwork: un filo solo. Il rosso è il classico, il blu si chiama «bluework»">Filo<select id="digRwCol"><option value="rosso">rosso</option><option value="blu">blu</option><option value="nero">nero</option><option value="marrone">marrone</option><option value="verde">verde</option></select></label>
+            <label class="field" title="Sottile: punto filza singolo, come i redwork in commercio. Marcata: filza tripla, linea più spessa">Linea<select id="digRwPas"><option value="1">sottile</option><option value="3">marcata</option></select></label>
+            <label class="check" style="grid-column:1/-1" title="Fiocchi di neve, puntini e trattini isolati più piccoli di 4 mm: ognuno è un salto, cioè un filo da tagliare a mano"><input type="checkbox" id="digRwStacc"><span>Togli i pezzetti staccati (meno tagli)</span></label>
+          </div>
+          <div class="croce-idon" id="digCroce" hidden></div>
           <button class="btn" id="digRifai">Ricalcola</button>
         </div>
         <div class="blocco">
@@ -958,6 +989,7 @@ input[type=range] { width: 100%; accent-color: var(--accent); margin: 14px 0 2px
   <button class="btn" id="bVedi"><svg class="i"><use href="#i-eye"/></svg>Mostra</button>
   <button class="btn" id="bRaccSel"><svg class="i"><use href="#i-folder"/></svg>In raccolta</button>
   <button class="btn" id="bTogliRacc" hidden><svg class="i"><use href="#i-x"/></svg>Togli dalla raccolta</button>
+  <button class="btn" id="bConf" hidden title="Confronta i 2 disegni selezionati affiancati"><svg class="i"><use href="#i-zoom"/></svg>Confronta</button>
   <button class="btn" id="bComp" title="Metti i disegni selezionati in una composizione"><svg class="i"><use href="#i-plus"/></svg>Componi</button>
   <button class="btn" id="bSpesa"><svg class="i"><use href="#i-cart"/></svg>Fili da comprare</button>
   <button class="btn" id="bElimina" title="Elimina i selezionati dalla libreria (vanno nel cestino di OpenHoop)"><svg class="i"><use href="#i-trash"/></svg></button>
@@ -1071,6 +1103,13 @@ input[type=range] { width: 100%; accent-color: var(--accent); margin: 14px 0 2px
     <button class="btn" id="dopTieni"><svg class="i"><use href="#i-check"/></svg>Importa lo stesso</button>
     <button class="btn" id="dopColori" hidden title="Il disegno che hai già prende i colori di questo; questo non viene importato"><svg class="i"><use href="#i-spool"/></svg>Scarta ma prendi i suoi colori</button>
     <button class="btn pri" id="dopScarta"><svg class="i"><use href="#i-trash"/></svg>Scarta: è uguale</button></footer>
+</div></div>
+
+<!-- confronto di due disegni della libreria -->
+<div class="modal" id="mConf" hidden><div class="dlg conf">
+  <header><h3>Confronto</h3><span class="hint" style="margin-left:12px">rotellina: zoom insieme · trascina: sposta insieme · doppio clic: intero</span>
+    <button class="btn ico ghost" data-chiudi="mConf" title="Chiudi (Esc)"><svg class="i"><use href="#i-x"/></svg></button></header>
+  <div class="body"><div class="conf-griglia" id="confCorpo"></div></div>
 </div></div>
 
 <!-- nome raccolta -->
@@ -1470,8 +1509,74 @@ $("g").ondblclick = e => { const c = e.target.closest(".card"); if (c) dettaglio
 function barra() {
   $("bar").hidden = !SEL.size;
   $("nsel").textContent = SEL.size; $("nSelNav").textContent = SEL.size;
+  $("bConf").hidden = SEL.size !== 2;
   $("selThumbs").innerHTML = [...SEL.keys()].slice(-6).reverse().map(i => `<img src="/img/${i}.webp?v=${AVV}" alt="" title="${esc(SEL.get(i))}">`).join("");
 }
+// ---- confronto di 2 disegni: affiancati, zoom e spostamento insieme (stessa parte del disegno nei due) ----
+const CONF = { s: 1, x: 0, y: 0 };
+function confApplica() {
+  document.querySelectorAll("#confCorpo .vista").forEach(v => { v.style.transform = `translate(${CONF.x}px,${CONF.y}px) scale(${CONF.s})`; });
+}
+$("bConf").onclick = async () => {
+  const ids = [...SEL.keys()].slice(-2);
+  if (ids.length !== 2) return;
+  Object.assign(CONF, { s: 1, x: 0, y: 0 });
+  $("confCorpo").innerHTML = `<span class="hint">${t("Carico…")}</span>`;
+  apri("mConf");
+  let d;
+  try { d = await Promise.all(ids.map(i => api("/api/dettaglio?i=" + i))); }
+  catch (e) { $("confCorpo").innerHTML = `<span class="hint">${esc(e.message)}</span>`; return; }
+  // valori a confronto: dove «meno è meglio» il migliore in verde
+  const val = v => ({
+    misure: fMM(v.w, v.h), punti: v.punti, fili: new Set(v.seq || []).size, cambi: Math.max(0, (v.col || 1) - 1),
+    tagli: v.taglia_salti ? null : v.tagli, salti: v.salti, tempo: v.min,
+  });
+  const V = d.map(val);
+  const cl = (k, j) => {
+    const a = V[j][k], b = V[1 - j][k];
+    if (a == null || b == null || a === b) return "";
+    return a < b ? "meglio" : "peggio";
+  };
+  const num = x => x == null ? "–" : Number(x).toLocaleString(LOC);
+  $("confCorpo").innerHTML = d.map((v, j) => `<div class="conf-lato">
+    <h4 data-no-tr>${esc(v.nome)}</h4>
+    <div class="conf-fig" data-j="${j}"><div class="vista"><img src="/img/${v.i}.webp?v=${AVV}" data-big="/api/anteprima?v=${AVV}&i=${v.i}" alt=""></div></div>
+    <div class="conf-dati">
+      <span class="k">${t("Misure")}</span><span class="v">${V[j].misure}</span>
+      <span class="k">${t("Punti")}</span><span class="v">${num(V[j].punti)}</span>
+      <span class="k">${t("Fili diversi")}</span><span class="v ${cl("fili", j)}">${num(V[j].fili)}</span>
+      <span class="k">${t("Cambi di filo")}</span><span class="v ${cl("cambi", j)}">${num(V[j].cambi)}</span>
+      ${V[j].tagli != null || V[1 - j].tagli != null ? `<span class="k">${t("Tagli a mano")}</span><span class="v ${cl("tagli", j)}">${num(V[j].tagli)}</span>` : ""}
+      <span class="k">${t("Salti")}</span><span class="v ${cl("salti", j)}">${num(V[j].salti)}</span>
+      <span class="k">${t("Tempo")}</span><span class="v ${cl("tempo", j)}">~${num(V[j].tempo)}′</span>
+      <span class="k">${t("Formato")}</span><span class="v">${esc(v.fmt || "")}</span>
+      ${v.autore ? `<span class="k">${t("Autore")}</span><span class="v">${esc(v.autore)}</span>` : ""}
+      <span class="k">${t("Dove si trova")}</span><span class="v" data-no-tr>${esc(v.percorso || "")}</span>
+    </div>
+    <div class="conf-sw">${(v.seq || []).map(h => `<i style="background:${esc(h)}" title="${esc(h)}"></i>`).join("")}</div>
+  </div>`).join("");
+  // alta definizione appena pronta
+  $("confCorpo").querySelectorAll("img[data-big]").forEach(im => { const b = new Image(); b.onload = () => { im.src = b.src; }; b.src = im.dataset.big; });
+  const figs = [...$("confCorpo").querySelectorAll(".conf-fig")];
+  figs.forEach(f => {
+    f.onwheel = e => {
+      e.preventDefault();
+      const r = f.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
+      const s2 = Math.min(12, Math.max(1, CONF.s * (e.deltaY < 0 ? 1.2 : 1 / 1.2)));
+      CONF.x = mx - (mx - CONF.x) * s2 / CONF.s; CONF.y = my - (my - CONF.y) * s2 / CONF.s; CONF.s = s2;
+      if (s2 === 1) { CONF.x = 0; CONF.y = 0; }
+      confApplica();
+    };
+    f.onpointerdown = e => {
+      f.setPointerCapture(e.pointerId); f.classList.add("trascina");
+      const x0 = e.clientX - CONF.x, y0 = e.clientY - CONF.y;
+      f.onpointermove = ev => { CONF.x = ev.clientX - x0; CONF.y = ev.clientY - y0; confApplica(); };
+      f.onpointerup = () => { f.onpointermove = null; f.classList.remove("trascina"); };
+    };
+    f.ondblclick = () => { Object.assign(CONF, { s: 1, x: 0, y: 0 }); confApplica(); };
+  });
+};
+
 $("bSvuota").onclick = () => { SEL.clear(); salvaSel(); carica(false); toast("Selezione svuotata"); };
 $("bVedi").onclick = () => { solo = "sel"; segna("navLib", document.querySelector('#navLib [data-solo="sel"]')); pag = 0; carica(); };
 
@@ -2827,6 +2932,10 @@ function digMostra() {
   $("digNome").value = b.nome; $("digAlt2").value = b.alt_mm; $("digCol2").value = b.max_colori;
   $("digSemp").value = b.semplifica === true ? "si" : b.semplifica === false ? "no" : "auto";
   $("digStile").value = b.stile || "pulito";
+  $("digRwCol").value = (b.redwork && b.redwork.colore) || "rosso";
+  $("digRwPas").value = String((b.redwork && b.redwork.passate) || 1);
+  $("digRwStacc").checked = !!(b.redwork && b.redwork.staccati === false);
+  $("digRw").hidden = $("digStile").value !== "redwork";
   document.querySelectorAll("#digDens button").forEach(x => x.classList.toggle("on", x.dataset.v === (b.densita || "normale")));
   const tel = b.tel >= 0 ? `telaio ${fT(INFO.telai[b.tel])}` : `<b style="color:var(--danger)">non entra in nessun telaio</b>`;
   const tipi = Object.entries(b.tipi || {}).map(([k, n]) => `${n} ${t(PUNTO_IT[k] || k)}`).join(" · ");
@@ -2834,12 +2943,13 @@ function digMostra() {
   const tg = b.tagli ?? "?";
   $("digInfo").innerHTML = `<div class="stat"><div><span>Misura</span><b>${fMM(b.larg, b.alt)}</b></div><div><span>Tempo</span><b>~${b.minuti}′</b></div>
     <div><span>Colori</span><b>${b.colori}</b></div><div class="${tg > 15 ? "warn" : ""}" title="Salti dentro lo stesso colore: fili da tagliare a mano"><span>Tagli a mano</span><b>${tg}</b></div></div>
-    <p class="note">${b.punti.toLocaleString(LOC)} punti · ${tel} · ${b.zone} zone: ${esc(tipi)}</p>${digMisura(b)}` +
+    <p class="note">${b.punti.toLocaleString(LOC)} punti · ${tel} · ${b.stile === "croce" ? "punto croce" : b.stile === "redwork" ? "redwork: solo linee a punto filza" : `${b.zone} zone: ${esc(tipi)}`}</p>${digMisura(b)}` +
     (b.fonte ? `<p class="note">Disegno da ${esc(b.fonte.fonte)} · licenza <b>${esc(b.fonte.licenza)}</b>${b.fonte.autore ? " · " + esc(b.fonte.autore) : ""}` +
       (/^https:\/\//.test(b.fonte.pagina || "") ? ` · <a href="${esc(b.fonte.pagina)}" target="_blank" rel="noopener">pagina</a>` : "") + `</p>` : "");
   $("digFili").innerHTML = (b.fili || []).map((f, k) => `<button data-k="${k}" class="${DIG.scelta === k ? "on" : ""}" title="Colore dell'immagine ${esc(f.originale)} · differenza ${f.de}${f.a_mano ? " · scelto a mano" : ""}"><i style="background:${esc(f.originale)}"></i><i style="background:${esc(f.hex || f.originale)}"></i>${esc(f.num || "")} ${esc(f.nome || "")}${f.a_mano ? " ✎" : ""}</button>`).join("");
   digScelta();
   digCambiate();
+  digIdon();
 }
 // PASSO 22: misura consigliata (min = sotto si perdono dettagli contrastati o colori; max = risoluzione immagine)
 function digMisura(b) {
@@ -2904,11 +3014,57 @@ function digCambiate() {
   const dens = (document.querySelector("#digDens button.on") || {}).dataset?.v || "normale";
   const semp = b.semplifica === true ? "si" : b.semplifica === false ? "no" : "auto";
   const diverso = +$("digAlt2").value !== +b.alt_mm || +$("digCol2").value !== +b.max_colori || dens !== (b.densita || "normale")
-    || $("digStile").value !== (b.stile || "pulito") || $("digSemp").value !== semp;
+    || $("digStile").value !== (b.stile || "pulito") || $("digSemp").value !== semp
+    || ($("digStile").value === "redwork" && ($("digRwCol").value !== ((b.redwork && b.redwork.colore) || "rosso")
+        || $("digRwPas").value !== String((b.redwork && b.redwork.passate) || 1)
+        || $("digRwStacc").checked !== !!(b.redwork && b.redwork.staccati === false)));
+  $("digRw").hidden = $("digStile").value !== "redwork";
   $("digRifai").classList.toggle("pri", diverso);
   $("digRifai").textContent = diverso ? "Ricalcola con queste impostazioni" : "Ricalcola";
 }
-["digAlt2", "digCol2", "digStile", "digSemp"].forEach(id => $(id).addEventListener("input", digCambiate));
+["digAlt2", "digCol2", "digStile", "digSemp", "digRwCol", "digRwPas", "digRwStacc"].forEach(id => $(id).addEventListener("input", digCambiate));
+// punto croce: scala «quanto il disegno si presta» (0-100 %) alla misura scritta, appena si sceglie lo stile
+const CROCE_MOTIVI = {
+  dettagli_persi: n => n === 1 ? "1 dettaglio sparisce" : `${n} dettagli spariscono`,
+  spezzate: n => n === 1 ? "1 zona si spezza in più pezzi" : `${n} zone si spezzano in più pezzi`,
+  sottili: n => n === 1 ? "1 zona più stretta di un quadretto: viene a gradini" : `${n} zone più strette di un quadretto: vengono a gradini`,
+  sbavature: n => `croci fuori dal disegno: ${n}%`,
+  linee_perse: n => `linee perse: ${n}%`,
+  sfumature: n => `disegno sfumato (${n}%): a croci le sfumature vengono a gradini`,
+  pochi_quadretti: n => `solo ${n} quadretti: ingrandisci il disegno per più dettaglio`,
+};
+DIG.idon = {};
+let digIdonTimer = null;
+function digIdonMostra(v) {
+  const el = $("digCroce");
+  if (!v) { el.innerHTML = `<p class="note">Adatto al punto croce: calcolo…</p>`; return; }
+  if (v.errore) { el.innerHTML = `<p class="note bad">Adatto al punto croce: non calcolato (${esc(v.errore)})</p>`; return; }
+  const mot = (v.motivi || []).map(([k, n]) => CROCE_MOTIVI[k] ? `<li>${esc(CROCE_MOTIVI[k](n))}</li>` : "").join("");
+  const cons = v.perc >= 85 ? "Il disegno si presta bene: colori pieni e dettagli abbastanza grandi per i quadretti."
+    : v.perc >= 70 ? "Viene bene, con qualche dettaglio semplificato."
+    : v.perc >= 50 ? "Si può fare, ma alcune parti si leggeranno male: prova una misura più grande."
+    : "Sconsigliato: il disegno ha troppi dettagli fini o sfumature per i quadretti. Meglio lo stile pulito.";
+  el.innerHTML = `<div class="field" style="margin:0">Adatto al punto croce a ${n1(v.alt)} mm: <b class="${esc(v.livello)}">${v.perc}% · ${esc(v.livello)}</b></div>
+    <div class="scala" title="0 = sconsigliato · 50 = difficile · 70 = buono · 85 = ottimo"><i style="left:${Math.max(0, Math.min(100, v.perc))}%"></i></div>
+    <div class="tacche"><span style="width:50%">sconsigliato</span><span style="width:20%">difficile</span><span style="width:15%">buono</span><span style="width:15%">ottimo</span></div>
+    <p class="note" style="margin:6px 0 0">${cons}</p>${mot ? `<ul>${mot}</ul>` : ""}`;
+}
+async function digIdon() {
+  const b = DIG.bozze.find(x => x.id === DIG.cur), el = $("digCroce");
+  el.hidden = !b || $("digStile").value !== "croce";
+  if (el.hidden) return;
+  const alt = +$("digAlt2").value || b.alt_mm;
+  if (b.stile === "croce" && b.croce && Math.abs(b.croce.alt - alt) < 0.5) return digIdonMostra(b.croce);
+  const k = `${b.id}|${b.data}|${alt}`;
+  if (DIG.idon[k]) return digIdonMostra(DIG.idon[k]);
+  digIdonMostra(null);
+  try { DIG.idon[k] = await api("/api/digit/idoneita", { id: b.id, alt }); }
+  catch (e) { DIG.idon[k] = { errore: e.message }; }
+  const ora = DIG.bozze.find(x => x.id === DIG.cur);       // nel frattempo può essere cambiata la prova o la misura
+  if (ora && ora.id === b.id && (+$("digAlt2").value || ora.alt_mm) === alt && $("digStile").value === "croce") digIdonMostra(DIG.idon[k]);
+}
+$("digStile").addEventListener("input", digIdon);
+$("digAlt2").addEventListener("input", () => { clearTimeout(digIdonTimer); digIdonTimer = setTimeout(digIdon, 700); });
 function digLeggi(file) {
   if (!file || !file.type.startsWith("image/")) { toast("Serve un file immagine (PNG, JPG, WEBP…)"); return; }
   const r = new FileReader();
@@ -3024,7 +3180,7 @@ async function digAzione(url, extra = {}) {
 $("digRifai").onclick = async () => {
   $("digAttesa").hidden = false;
   const densita = (document.querySelector("#digDens button.on") || {}).dataset?.v || "normale";
-  try { await digAzione("/api/digit/rifai", { nome: $("digNome").value, alt: $("digAlt2").value, colori: $("digCol2").value, semplifica: $("digSemp").value, stile: $("digStile").value, densita }); DIG.ver++; await digElenco(); }
+  try { await digAzione("/api/digit/rifai", { nome: $("digNome").value, alt: $("digAlt2").value, colori: $("digCol2").value, semplifica: $("digSemp").value, stile: $("digStile").value, densita, redwork: { colore: $("digRwCol").value, passate: +$("digRwPas").value, staccati: !$("digRwStacc").checked } }); DIG.ver++; await digElenco(); }
   catch (e) { toast("Non riuscito: " + e.message); }
   $("digAttesa").hidden = true;
 };
