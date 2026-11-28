@@ -46,6 +46,12 @@
   .lang { position: absolute; top: 14px; right: 18px; }
   .lang select { font: inherit; font-size: .9rem; padding: 6px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--ink); }
   body { position: relative; }
+  .nov { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 20px 12px; max-width: 680px; margin: 18px auto 0; text-align: left; font-size: .95rem; }
+  .nov h3 { margin: 0 0 6px; font-size: 1rem; }
+  .nov ul { margin: 0; padding-left: 20px; color: var(--muted); }
+  .nov li { margin: 3px 0; }
+  .nov li b { color: var(--ink); }
+  .nov .tutte { display: block; margin-top: 8px; font-size: .88rem; text-align: right; }
 </style>
 </head>
 <body>
@@ -62,6 +68,7 @@
       <a class="btn alt" href="https://github.com/lelus78/OpenHoop" data-t="gh"></a>
     </div>
     <p class="small" id="ver"></p>
+    <div class="nov" id="nov" hidden><h3 id="novT"></h3><ul id="novL"></ul><a class="tutte" id="novA" href="https://github.com/lelus78/OpenHoop/releases"></a></div>
   </header>
 
   <div class="demo"><video src="img/demo.mp4" autoplay muted loop playsinline poster="screenshots/library.jpg"></video></div>
@@ -93,6 +100,7 @@ const T = {
 en: { h1: "Your embroidery designs, finally in order.",
   lead: "OpenHoop is a <b>free, open-source</b> organizer for machine embroidery designs. Tidy up years of downloads, find any design in seconds, try other thread colours and send it to your machine in the right format.",
   dl: "⬇️ Download for Windows — free", dlv: "⬇️ Download OpenHoop {v} for Windows — free", gh: "View on GitHub",
+  nov: "What's new in {v}", tutte: "All versions and changes →",
   ver: "Windows 10/11 · no account · no subscription · English, Italiano, Français, Español", mb: "{m} MB zip",
   demo: "Search by meaning, open a design, point at a part and click to try another thread. The designs shown were made with OpenHoop's own digitizer.",
   cosa: "What it does",
@@ -114,6 +122,7 @@ en: { h1: "Your embroidery designs, finally in order.",
 it: { h1: "I tuoi ricami, finalmente in ordine.",
   lead: "OpenHoop è un programma <b>gratuito e open source</b> per chi ricama a macchina. Mette in ordine anni di download, trova qualsiasi disegno in pochi secondi, ti fa provare altri colori dei fili e lo manda alla tua macchina nel formato giusto.",
   dl: "⬇️ Scarica per Windows — gratis", dlv: "⬇️ Scarica OpenHoop {v} per Windows — gratis", gh: "Vedi su GitHub",
+  nov: "Novità della {v}", tutte: "Tutte le versioni e le novità →",
   ver: "Windows 10/11 · niente account · niente abbonamenti · Italiano, English, Français, Español", mb: "zip da {m} MB",
   demo: "Cerca per significato, apri un disegno, punta una parte e fai clic per provare un altro filo. I disegni mostrati sono stati fatti con il digitalizzatore di OpenHoop.",
   cosa: "Cosa fa",
@@ -135,6 +144,7 @@ it: { h1: "I tuoi ricami, finalmente in ordine.",
 fr: { h1: "Vos motifs de broderie, enfin en ordre.",
   lead: "OpenHoop est un organiseur <b>gratuit et open source</b> pour la broderie machine. Rangez des années de téléchargements, retrouvez n'importe quel motif en quelques secondes, essayez d'autres couleurs de fil et envoyez-le à votre machine dans le bon format.",
   dl: "⬇️ Télécharger pour Windows — gratuit", dlv: "⬇️ Télécharger OpenHoop {v} pour Windows — gratuit", gh: "Voir sur GitHub",
+  nov: "Nouveautés de la {v} (en anglais)", tutte: "Toutes les versions →",
   ver: "Windows 10/11 · sans compte · sans abonnement · Français, English, Italiano, Español", mb: "zip de {m} Mo",
   demo: "Cherchez par le sens, ouvrez un motif, pointez une partie et cliquez pour essayer un autre fil. Les motifs montrés ont été créés avec le numériseur d'OpenHoop.",
   cosa: "Ce qu'il fait",
@@ -156,6 +166,7 @@ fr: { h1: "Vos motifs de broderie, enfin en ordre.",
 es: { h1: "Tus diseños de bordado, por fin en orden.",
   lead: "OpenHoop es un organizador <b>gratuito y de código abierto</b> para bordado a máquina. Ordena años de descargas, encuentra cualquier diseño en segundos, prueba otros colores de hilo y envíalo a tu máquina en el formato correcto.",
   dl: "⬇️ Descargar para Windows — gratis", dlv: "⬇️ Descargar OpenHoop {v} para Windows — gratis", gh: "Ver en GitHub",
+  nov: "Novedades de la {v} (en inglés)", tutte: "Todas las versiones →",
   ver: "Windows 10/11 · sin cuenta · sin suscripción · Español, English, Italiano, Français", mb: "zip de {m} MB",
   demo: "Busca por significado, abre un diseño, señala una parte y haz clic para probar otro hilo. Los diseños mostrados se hicieron con el digitalizador de OpenHoop.",
   cosa: "Qué hace",
@@ -185,6 +196,22 @@ function applica(l) {
     a.href = REL.url; a.textContent = t.dlv.replace("{v}", REL.v);
     v.textContent = t.mb.replace("{m}", REL.mb) + " · " + t.ver;
   } else { a.textContent = t.dl; v.textContent = t.ver; }
+  novita(t);
+}
+// note della release: blocco inglese, riga vuota, blocco italiano (le altre lingue vedono l'inglese)
+function novita(t) {
+  const box = document.getElementById("nov");
+  if (!REL || !REL.note) { box.hidden = true; return; }
+  const blocchi = REL.note.replace(/\r/g, "").split(/\n\s*\n/).map(b => b.trim()).filter(Boolean);
+  const testo = (L === "it" && blocchi.length > 1) ? blocchi[blocchi.length - 1] : blocchi[0];
+  const esc = x => x.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const voci = testo.split("\n").map(r => r.replace(/^\s*[-*]\s+/, "").trim()).filter(Boolean)
+    .map(r => "<li>" + esc(r).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>") + "</li>");
+  if (!voci.length) { box.hidden = true; return; }
+  document.getElementById("novT").textContent = t.nov.replace("{v}", REL.v);
+  document.getElementById("novL").innerHTML = voci.join("");
+  document.getElementById("novA").textContent = t.tutte;
+  box.hidden = false;
 }
 const scelta = new URLSearchParams(location.search).get("lang") || localStorage.getItem("oh_lang")
   || (navigator.languages || [navigator.language || "en"]).map(x => x.slice(0, 2).toLowerCase()).find(x => T[x]) || "en";
@@ -194,7 +221,7 @@ document.getElementById("lingua").onchange = e => { localStorage.setItem("oh_lan
 fetch("https://api.github.com/repos/lelus78/OpenHoop/releases/latest").then(r => r.json()).then(r => {
   const z = (r.assets || []).find(a => /\.zip$/.test(a.name));
   if (!z) return;
-  REL = { url: z.browser_download_url, v: r.tag_name.replace(/^v/, ""), mb: (z.size / 1048576).toFixed(1) };
+  REL = { url: z.browser_download_url, v: r.tag_name.replace(/^v/, ""), mb: (z.size / 1048576).toFixed(1), note: r.body || "" };
   applica(L);
 }).catch(() => {});
 </script>
